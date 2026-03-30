@@ -14,6 +14,16 @@ vendor/
 .idea/
 .vscode/
 .kiro/
+.claude/
+.claude_*
+CLAUDE.md
+.cursorrules
+.cursor/
+.github/copilot/
+.aider*
+.codeium/
+.continue/
+.windsurf/
 *.swp
 *.swo
 *~
