@@ -1,0 +1,33 @@
+go 1.25
+
+use (
+	./01-beginner/complete
+	./01-beginner/starter
+	./02-auto-crud/complete
+	./02-auto-crud/starter
+	./03-intermediate/complete
+	./03-intermediate/starter
+	./04-advanced/01-di-container/complete
+	./04-advanced/01-di-container/starter
+	./04-advanced/02-auth-middleware/complete
+	./04-advanced/02-auth-middleware/starter
+	./04-advanced/03-openapi/complete
+	./04-advanced/03-openapi/starter
+	./04-advanced/04-sse/complete
+	./04-advanced/04-sse/starter
+	./04-advanced/05-mcp-server/complete
+	./04-advanced/05-mcp-server/starter
+	./04-advanced/06-websocket/complete
+	./04-advanced/06-websocket/starter
+	./04-advanced/07-testing/complete
+	./04-advanced/07-testing/starter
+	./04-advanced/08-architecture/complete
+	./04-advanced/08-architecture/starter
+	./05-production/01-monitoring/complete
+	./05-production/01-monitoring/starter
+	./05-production/02-docker-deploy/complete
+	./05-production/02-docker-deploy/starter
+	./05-production/03-benchmark/complete
+	./05-production/03-benchmark/starter
+	./tests
+)
