@@ -10,9 +10,10 @@
 # Go workspace
 vendor/
 
-# IDE files
+# IDE / tool files
 .idea/
 .vscode/
+.kiro/
 *.swp
 *.swo
 *~
