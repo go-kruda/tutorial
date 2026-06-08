@@ -1,9 +1,9 @@
 module github.com/go-kruda/tutorial/04-advanced/06-websocket/starter
 
-go 1.25.8
+go 1.25.10
 
 require (
-	github.com/go-kruda/kruda v1.2.0
+	github.com/go-kruda/kruda v1.2.5
 	github.com/go-kruda/kruda/contrib/ws v1.2.0
 )
 

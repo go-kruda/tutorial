@@ -18,16 +18,15 @@ Choosing a Go web framework is a big decision — and we think Kruda makes it an
 
 ## 📊 Benchmark Highlights
 
-Kruda's **Wing Transport** leverages Linux's `epoll` and `eventfd` for a custom, high-performance networking layer — bypassing the overhead of Go's standard `net/http`. Here are representative benchmark results on a 16-core Linux machine (Go 1.25, 1000 concurrent connections, JSON serialisation workload):
+Kruda's **Wing Transport** leverages Linux's `epoll` and `eventfd` for a custom, high-performance networking layer — bypassing the overhead of Go's standard `net/http`. Here are representative benchmark results on a 16-core Linux machine (Go 1.25.10, CPU-bound handler workloads):
 
-| Framework | Throughput (req/s) | Avg Latency (ms) | P99 Latency (ms) |
+| Workload | Kruda (Wing) | Fiber (fasthttp) | Actix (Rust) |
 |---|---|---|---|
-| **Kruda (Wing Transport)** | **312,000** | **0.32** | **1.1** |
-| Fiber (fasthttp) | 280,000 | 0.36 | 1.4 |
-| Echo (net/http) | 195,000 | 0.51 | 2.3 |
-| Chi (net/http) | 190,000 | 0.53 | 2.5 |
+| **Plaintext** | **846K req/s** | 670K req/s | 814K req/s |
+| **JSON** | **805K req/s** | 625K req/s | 790K req/s |
+| **DB (read)** | **108K req/s** | 107K req/s | 37K req/s |
 
-> 🔥 Wing Transport delivers **~11% higher throughput** than fasthttp and **~60% more** than standard `net/http` frameworks, with consistently lower tail latency.
+> 🔥 Wing Transport delivers **~12% higher throughput** than Actix (Rust) and **~29% more** than Fiber on JSON workloads, with consistently lower p99 latency.
 
 ### Why Wing Transport is faster
 
