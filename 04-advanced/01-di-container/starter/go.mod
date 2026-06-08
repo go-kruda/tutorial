@@ -1,8 +1,8 @@
 module github.com/go-kruda/tutorial/04-advanced/01-di-container/starter
 
-go 1.25.8
+go 1.25.10
 
-require github.com/go-kruda/kruda v1.2.0
+require github.com/go-kruda/kruda v1.2.5
 
 require (
 	github.com/andybalholm/brotli v1.2.0 // indirect
