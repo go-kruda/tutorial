@@ -54,7 +54,8 @@ By the end of this lesson you'll be able to:
 │   └── main.go
 └── complete/          ← ✅ Fully working reference implementation
     ├── go.mod
-    └── main.go
+    ├── main.go
+    └── sse_test.go    ← 🧪 Tests /snapshot with TestClient.SSE
 ```
 
 - 📁 **[starter/](./starter/)** — A compilable skeleton with `// TODO:` placeholders for you to fill in
@@ -76,6 +77,28 @@ By the end of this lesson you'll be able to:
 | Best for | Notifications, feeds, dashboards | Chat, gaming, real-time collaboration |
 
 > 📡 SSE is ideal for cases where the server needs to push data to the client but the client doesn't need to send data back — much simpler than WebSocket!
+
+---
+
+## ⚡ v1.5.0: SSE on the Wing Transport
+
+Since kruda **v1.5.0**, SSE streams on the high-performance **Wing** transport
+(the Linux default) — add the `kruda.Stream` route preset:
+
+```go
+app.Get("/events", handler, kruda.Stream)
+```
+
+| Transport | Default on | Streaming |
+|---|---|---|
+| net/http (`kruda.NetHTTP()`) | TLS / Windows | ✅ always (via `http.Flusher`) |
+| Wing | Linux | ✅ with the `kruda.Stream` preset |
+| fasthttp | macOS dev | ❌ not supported |
+
+> 💡 This lesson keeps `kruda.New(kruda.NetHTTP())` so it runs on every OS
+> (macOS fasthttp can't stream). On a Linux/Wing deployment you can drop
+> `NetHTTP()` and rely on Wing + `kruda.Stream`. The `kruda.Stream` preset is a
+> harmless no-op on net/http, so it is safe to keep on the route either way.
 
 ### SSE Event Format
 
@@ -349,6 +372,41 @@ diff starter/main.go complete/main.go
 | Non-blocking send | Uses `select` + `default` to prevent a slow client from blocking others |
 | Heartbeat | Sends periodic events to keep the connection active |
 | `EventSource` API | Browser API for receiving SSE events with auto-reconnect |
+
+---
+
+## 🧪 Testing an SSE Endpoint
+
+`TestClient.SSE(path)` runs an SSE handler to completion in memory and returns
+the parsed events — no server needed. It only works on a **finite** handler (one
+that returns), so the `complete/` app adds a `GET /snapshot` route that emits one
+event and returns. (`TestClient.SSE` would hang on the infinite `/events` stream.)
+
+```go
+func TestSnapshotSSE(t *testing.T) {
+    hub := NewEventHub()
+    app := newApp(hub)
+    client := kruda.NewTestClient(app)
+
+    result, err := client.SSE("/snapshot")
+    if err != nil {
+        t.Fatalf("unexpected error: %v", err)
+    }
+    if result.Status != 200 {
+        t.Errorf("expected 200, got %d", result.Status)
+    }
+    if len(result.Events) != 1 || !strings.Contains(result.Events[0], "event: snapshot") {
+        t.Errorf("expected one snapshot event, got: %v", result.Events)
+    }
+}
+```
+
+Run it:
+
+```bash
+cd 04-advanced/04-sse/complete
+go test -v ./...
+```
 
 ---
 
