@@ -122,6 +122,18 @@ func newApp(hub *EventHub) *kruda.App {
 		})
 	}, kruda.Stream)
 
+	// ── Snapshot Endpoint (finite — emits once then returns) ──
+	// A finite SSE handler so it can be tested with TestClient.SSE, which
+	// runs the handler to completion before parsing the events.
+	app.Get("/snapshot", func(c *kruda.Ctx) error {
+		return c.SSE(func(stream *kruda.SSEStream) error {
+			stream.Event("snapshot", map[string]any{
+				"clients": hub.ClientCount(),
+			})
+			return nil
+		})
+	}, kruda.Stream)
+
 	// ── Send Event Endpoint ──
 	kruda.Post[SendEventInput, MessageResponse](app, "/send",
 		func(c *kruda.C[SendEventInput]) (*MessageResponse, error) {
@@ -172,6 +184,7 @@ func main() {
 
 	log.Println("Server starting on :3000 ...")
 	log.Println("  SSE stream:   GET  /events")
+	log.Println("  Snapshot:     GET  /snapshot")
 	log.Println("  Send event:   POST /send")
 	log.Println("  Client count: GET  /clients")
 	log.Fatal(app.Listen(":3000"))
