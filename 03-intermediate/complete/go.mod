@@ -1,9 +1,9 @@
 module github.com/go-kruda/tutorial/03-intermediate/complete
 
-go 1.25.10
+go 1.25.11
 
 require (
-	github.com/go-kruda/kruda v1.2.5
+	github.com/go-kruda/kruda v1.5.0
 	github.com/jackc/pgx/v5 v5.7.4
 )
 
