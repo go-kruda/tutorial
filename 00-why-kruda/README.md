@@ -18,7 +18,7 @@ Choosing a Go web framework is a big decision — and we think Kruda makes it an
 
 ## 📊 Benchmark Highlights
 
-Kruda's **Wing Transport** leverages Linux's `epoll` and `eventfd` for a custom, high-performance networking layer — bypassing the overhead of Go's standard `net/http`. Here are representative benchmark results on a 16-core Linux machine (Go 1.25.10, CPU-bound handler workloads):
+Kruda's **Wing Transport** leverages Linux's `epoll` and `eventfd` for a custom, high-performance networking layer — bypassing the overhead of Go's standard `net/http`. Here are representative benchmark results on a 16-core Linux machine (Go 1.25.11, CPU-bound handler workloads):
 
 | Workload | Kruda (Wing) | Fiber (fasthttp) | Actix (Rust) |
 |---|---|---|---|

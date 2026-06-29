@@ -12,8 +12,8 @@ github.com/davecgh/go-spew v1.1.0/go.mod h1:J7Y8YcW2NihsgmVo/mv3lAwl/skON4iLHjSs
 github.com/davecgh/go-spew v1.1.1/go.mod h1:J7Y8YcW2NihsgmVo/mv3lAwl/skON4iLHjSsI+c5H38=
 github.com/davecgh/go-spew v1.1.2-0.20180830191138-d8f796af33cc h1:U9qPSI2PIWSS1VwoXQT9A3Wy9MM3WgvqSxFWenqJduM=
 github.com/davecgh/go-spew v1.1.2-0.20180830191138-d8f796af33cc/go.mod h1:J7Y8YcW2NihsgmVo/mv3lAwl/skON4iLHjSsI+c5H38=
-github.com/go-kruda/kruda v1.2.5 h1:9k+bQ6YBJF9Ph62JACZ3BUIMCc5lyElLAj0ztEkvsn8=
-github.com/go-kruda/kruda v1.2.5/go.mod h1:Qgrl69/hDnU8Qohs0CXMAV2wgjS+lSaug9dsE9t7dhg=
+github.com/go-kruda/kruda v1.5.0 h1:kOZFY3GXIfUuFE91iVcPBB+o43Wh59py57NvCb6DlIo=
+github.com/go-kruda/kruda v1.5.0/go.mod h1:dSfysslVBnQt/u+o5nVDEU587OK8zZKVT94jX4MgkTU=
 github.com/jackc/pgpassfile v1.0.0 h1:/6Hmqy13Ss2zCq62VdNG8tM1wchn8zjSGOBJ6icpsIM=
 github.com/jackc/pgpassfile v1.0.0/go.mod h1:CEx0iS5ambNFdcRtxPj5JhEz+xB6uRky5eyVu/W2HEg=
 github.com/jackc/pgservicefile v0.0.0-20240606120523-5a60cdf6a761 h1:iCEnooe7UlwOQYpKFhBabPMi4aNAfoODPEFNiAnClxo=
