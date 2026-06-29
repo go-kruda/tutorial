@@ -82,7 +82,9 @@ func (h *EventHub) ClientCount() int {
 func main() {
 	hub := NewEventHub()
 
-	// SSE requires net/http transport (http.Flusher).
+	// net/http always provides http.Flusher, so SSE works everywhere.
+	// On the Wing transport (Linux) add the kruda.Stream preset to the
+	// route; we use NetHTTP() so this also runs on macOS (fasthttp can't stream).
 	app := kruda.New(kruda.NetHTTP())
 
 	// TODO: implement SSE stream endpoint GET /events
@@ -106,7 +108,7 @@ func main() {
 	//               }
 	//           }
 	//       })
-	//   })
+	//   }, kruda.Stream)   // kruda.Stream enables streaming on the Wing transport
 
 	// TODO: implement POST /send -- send an event to all SSE clients
 	//

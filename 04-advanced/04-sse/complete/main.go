@@ -83,38 +83,35 @@ func (h *EventHub) ClientCount() int {
 }
 
 // ============================================================
-// Application Entry Point
+// Application Wiring
 // ============================================================
 
-func main() {
-	hub := NewEventHub()
-
-	// SSE requires net/http transport because it needs
-	// http.Flusher for streaming. Wing does not support this.
+// newApp builds the SSE app with all routes registered and compiled.
+// It is shared by main() and the test file so tests exercise the exact
+// same routing.
+func newApp(hub *EventHub) *kruda.App {
+	// net/http always provides http.Flusher, so SSE streams on every OS.
+	// On the Wing transport (Linux default) the kruda.Stream preset enables
+	// the same streaming; we keep NetHTTP() here so the demo also runs on
+	// macOS (fasthttp cannot stream). On a Linux/Wing deploy you can drop
+	// NetHTTP() and rely on Wing + kruda.Stream.
 	app := kruda.New(kruda.NetHTTP())
 
-	// ── SSE Stream Endpoint ──────────────────────────────────
-	//
-	// c.SSE() takes a callback that receives an *SSEStream.
-	// Inside the callback you can send events and wait for the
-	// client to disconnect via stream.Done().
+	// ── SSE Stream Endpoint (infinite — runs until the client leaves) ──
 	app.Get("/events", func(c *kruda.Ctx) error {
 		ch := hub.Subscribe()
 		defer hub.Unsubscribe(ch)
 
 		return c.SSE(func(stream *kruda.SSEStream) error {
-			// Send a welcome event.
 			stream.Event("connected", map[string]any{
 				"message": "connected",
 				"clients": hub.ClientCount(),
 			})
 
-			// Loop until the client disconnects.
 			for {
 				select {
 				case <-stream.Done():
 					return nil
-
 				case event, ok := <-ch:
 					if !ok {
 						return nil
@@ -123,9 +120,9 @@ func main() {
 				}
 			}
 		})
-	})
+	}, kruda.Stream)
 
-	// ── Send Event Endpoint ──────────────────────────────────
+	// ── Send Event Endpoint ──
 	kruda.Post[SendEventInput, MessageResponse](app, "/send",
 		func(c *kruda.C[SendEventInput]) (*MessageResponse, error) {
 			eventName := c.In.Event
@@ -139,7 +136,7 @@ func main() {
 		},
 	)
 
-	// ── Client Count Endpoint ────────────────────────────────
+	// ── Client Count Endpoint ──
 	kruda.Get[struct{}, MessageResponse](app, "/clients",
 		func(c *kruda.C[struct{}]) (*MessageResponse, error) {
 			return &MessageResponse{
@@ -147,6 +144,18 @@ func main() {
 			}, nil
 		},
 	)
+
+	app.Compile()
+	return app
+}
+
+// ============================================================
+// Application Entry Point
+// ============================================================
+
+func main() {
+	hub := NewEventHub()
+	app := newApp(hub)
 
 	// ── Background Heartbeat ─────────────────────────────────
 	go func() {
