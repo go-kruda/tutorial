@@ -21,7 +21,7 @@ func TestSnapshotSSE(t *testing.T) {
 		t.Fatalf("unexpected error: %v", err)
 	}
 	if result.Status != 200 {
-		t.Errorf("expected status 200, got %d", result.Status)
+		t.Fatalf("expected status 200, got %d", result.Status)
 	}
 	if len(result.Events) != 1 {
 		t.Fatalf("expected 1 event, got %d: %v", len(result.Events), result.Events)
