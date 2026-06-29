@@ -21,8 +21,8 @@ Welcome to the Testing lesson! In this lesson you will learn how to write **unit
 By the end of this lesson you will be able to:
 
 - Use `kruda.NewTestClient(app)` to create a test client for testing
-- Call `client.Get("/path")`, `client.Post("/path", body)`, etc. to test routes
-- Check `resp.StatusCode()` and `resp.JSON(&v)` for assertions
+- Use the typed helpers `kruda.PostTyped[In, Out]` / `kruda.GetTyped[Out]` / `kruda.PatchTyped[In, Out]` and read the decoded `resp.Body` directly
+- Check `resp.StatusCode()` before trusting `resp.Body` (typed helpers are status-agnostic)
 - Write table-driven tests with `t.Run()` sub-tests
 - Test error cases (empty input, not found)
 - Run tests with `go test -v ./...`
@@ -87,9 +87,9 @@ Unit tests help you:
 └──────────────────┘     └───────────────────────────┘
          |
          v
-   resp.StatusCode()
-   resp.JSON(&v)
-   (assert in test)
+   resp := kruda.PostTyped[In, Out](client, path, body)
+   resp.StatusCode()   // check first
+   resp.Body           // already-decoded Out
 ```
 
 > `kruda.NewTestClient(app)` creates a test client that simulates HTTP requests -- you can call GET, POST, PATCH, DELETE without starting a real server. It tests routing, input binding, and handler logic all at once.
@@ -167,9 +167,10 @@ func TestCreateTask_Success(t *testing.T) {
     app := setupApp()
     client := kruda.NewTestClient(app)
 
-    resp, err := client.Post("/tasks", map[string]string{
-        "title":       "Write unit tests",
-        "description": "Learn testing",
+    // PostTyped[In, Out] sends a typed body and decodes the typed response.
+    resp, err := kruda.PostTyped[CreateTaskInput, TaskResponse](client, "/tasks", CreateTaskInput{
+        Title:       "Write unit tests",
+        Description: "Learn testing",
     })
     if err != nil {
         t.Fatalf("expected no error, got: %v", err)
@@ -178,19 +179,17 @@ func TestCreateTask_Success(t *testing.T) {
         t.Errorf("expected status 200, got %d", resp.StatusCode())
     }
 
-    var task TaskResponse
-    resp.JSON(&task)
-
-    if task.ID != 1 {
-        t.Errorf("expected ID=1, got ID=%d", task.ID)
+    // resp.Body is already a TaskResponse -- no manual resp.JSON(&task).
+    if resp.Body.ID != 1 {
+        t.Errorf("expected ID=1, got ID=%d", resp.Body.ID)
     }
-    if task.Title != "Write unit tests" {
-        t.Errorf("expected Title=%q, got %q", "Write unit tests", task.Title)
+    if resp.Body.Title != "Write unit tests" {
+        t.Errorf("expected Title=%q, got %q", "Write unit tests", resp.Body.Title)
     }
 }
 ```
 
-> `client.Post("/tasks", body)` sends a request through the test client -- you get a response back with `StatusCode()` and `JSON()` for assertions.
+> `kruda.PostTyped[In, Out](client, path, body)` returns a `*kruda.TypedTestResponse[Out]`. Use `resp.StatusCode()` for the status and `resp.Body` for the decoded value. The lower-level `client.Post(...)` + `resp.JSON(&v)` still exists if you need an untyped response.
 
 ### Step 6: Write Table-Driven Tests
 
@@ -253,26 +252,25 @@ func TestCreateTask_TableDriven(t *testing.T) {
 
 ### Step 7: Test Path Parameters and Error Codes
 
-Path parameters are automatically bound via the struct tag `param:"id"` -- in tests you simply call the URL with the ID:
+Path parameters are bound from the URL via the struct tag `param:"id"` -- in tests you just request the URL with the ID:
 
 ```go
 func TestGetTaskByID(t *testing.T) {
     app := setupApp()
     client := kruda.NewTestClient(app)
 
-    // Create a task first
-    client.Post("/tasks", map[string]string{"title": "Existing task"})
+    // Seed a task.
+    kruda.PostTyped[CreateTaskInput, TaskResponse](client, "/tasks", CreateTaskInput{Title: "Existing task"})
 
-    // Get it by ID
-    resp, _ := client.Get("/tasks/1")
+    resp, err := kruda.GetTyped[TaskResponse](client, "/tasks/1")
+    if err != nil {
+        t.Fatalf("unexpected error: %v", err)
+    }
     if resp.StatusCode() != 200 {
         t.Errorf("expected 200, got %d", resp.StatusCode())
     }
-
-    var task TaskResponse
-    resp.JSON(&task)
-    if task.Title != "Existing task" {
-        t.Errorf("Title = %q, want %q", task.Title, "Existing task")
+    if resp.Body.Title != "Existing task" {
+        t.Errorf("Title = %q, want %q", resp.Body.Title, "Existing task")
     }
 }
 
@@ -280,7 +278,9 @@ func TestGetTaskByID_NotFound(t *testing.T) {
     app := setupApp()
     client := kruda.NewTestClient(app)
 
-    resp, _ := client.Get("/tasks/999")
+    // Typed helpers are status-agnostic: on a 404 the error body does not
+    // decode into TaskResponse, so check the status, not Body.
+    resp, _ := kruda.GetTyped[TaskResponse](client, "/tasks/999")
     if resp.StatusCode() != 404 {
         t.Errorf("expected 404, got %d", resp.StatusCode())
     }
@@ -336,10 +336,12 @@ cat complete/handler_test.go
 |---|---|
 | `app.Compile()` | Compile routes before creating a test client |
 | `kruda.NewTestClient(app)` | Create a test client for testing without starting a server |
-| `client.Get("/path")` | Send a GET request through the test client |
-| `client.Post("/path", body)` | Send a POST request with a JSON body |
-| `resp.StatusCode()` | Check the HTTP status code |
-| `resp.JSON(&v)` | Parse the JSON response into a struct |
+| `kruda.GetTyped[Out](client, "/path")` | GET and decode the typed response into `resp.Body` |
+| `kruda.PostTyped[In, Out](client, "/path", body)` | POST a typed body and decode the typed response |
+| `kruda.PatchTyped[In, Out](client, "/path", body)` | PATCH a typed body and decode the typed response |
+| `resp.StatusCode()` | Check the HTTP status code (always before trusting `resp.Body`) |
+| `resp.Body` | The already-decoded typed response value |
+| `resp.JSON(&v)` | Lower-level: parse the body into a struct (untyped path) |
 | `resp.BodyString()` | Read the response body as a string |
 | Table-driven tests | Standard Go pattern: define test cases as a slice of structs |
 | `t.Run(name, func)` | Create a sub-test for each test case |
