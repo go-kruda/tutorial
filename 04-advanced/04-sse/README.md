@@ -383,6 +383,13 @@ that returns), so the `complete/` app adds a `GET /snapshot` route that emits on
 event and returns. (`TestClient.SSE` would hang on the infinite `/events` stream.)
 
 ```go
+import (
+	"strings"
+	"testing"
+
+	"github.com/go-kruda/kruda"
+)
+
 func TestSnapshotSSE(t *testing.T) {
     hub := NewEventHub()
     app := newApp(hub)
