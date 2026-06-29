@@ -53,7 +53,7 @@ func TestCreateTask_Success(t *testing.T) {
 	if resp.Body.Description != "Learn how to test with TestClient" {
 		t.Errorf("expected Description=%q, got %q", "Learn how to test with TestClient", resp.Body.Description)
 	}
-	if resp.Body.Done != false {
+	if resp.Body.Done {
 		t.Errorf("expected Done=false, got Done=%v", resp.Body.Done)
 	}
 }
@@ -108,7 +108,7 @@ func TestCreateTask_TableDriven(t *testing.T) {
 				if resp.Body.Title != tt.wantTitle {
 					t.Errorf("Title = %q, want %q", resp.Body.Title, tt.wantTitle)
 				}
-				if resp.Body.Done != false {
+				if resp.Body.Done {
 					t.Errorf("Done = %v, want false", resp.Body.Done)
 				}
 			}
@@ -222,7 +222,7 @@ func TestToggleDone_FlipsTwice(t *testing.T) {
 	if resp1.StatusCode() != 200 {
 		t.Errorf("expected status 200, got %d", resp1.StatusCode())
 	}
-	if resp1.Body.Done != true {
+	if !resp1.Body.Done {
 		t.Errorf("after first toggle: Done = %v, want true", resp1.Body.Done)
 	}
 
@@ -230,7 +230,10 @@ func TestToggleDone_FlipsTwice(t *testing.T) {
 	if err != nil {
 		t.Fatalf("second toggle error: %v", err)
 	}
-	if resp2.Body.Done != false {
+	if resp2.StatusCode() != 200 {
+		t.Errorf("expected status 200, got %d", resp2.StatusCode())
+	}
+	if resp2.Body.Done {
 		t.Errorf("after second toggle: Done = %v, want false", resp2.Body.Done)
 	}
 }
