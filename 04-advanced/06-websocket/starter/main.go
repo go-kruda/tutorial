@@ -118,31 +118,34 @@ func main() {
 	//   hub := NewHub()
 	hub := NewHub()
 
-	// WebSocket requires net/http transport (http.Hijacker).
+	// net/http always provides http.Hijacker, so WebSocket works
+	// everywhere. Since kruda v1.6.0, WebSocket also works on the
+	// Wing transport (Linux) via the kruda.Hijack preset -- see the
+	// ws.HandleFunc hint below. We keep NetHTTP() so this also runs
+	// on macOS (fasthttp still can't upgrade to WebSocket).
 	app := kruda.New(kruda.NetHTTP())
 
-	// TODO: Create a WebSocket upgrader from contrib/ws.
-	//
-	// Example:
-	//   upgrader := ws.New(ws.Config{
-	//       MaxMessageSize: 64 * 1024,
-	//   })
-	_ = ws.New
-
-	// TODO: Register the WebSocket endpoint using app.Get and
-	// upgrader.Upgrade(). Inside the upgrade callback you get
-	// a *ws.Conn to work with.
+	// TODO: Register the WebSocket endpoint using ws.HandleFunc. It
+	// registers the route (wiring the kruda.Hijack preset for you so
+	// this also works on the Wing transport) and calls your handler
+	// with a ready *ws.Conn.
 	//
 	// Steps:
-	//   1. app.Get("/ws", func(c *kruda.Ctx) error { ... })
-	//   2. Inside: return upgrader.Upgrade(c, func(conn *ws.Conn) { ... })
-	//   3. Create a Client{conn: conn, send: make(chan []byte, 64)}
-	//   4. hub.Register(client) and defer hub.Unregister(client)
-	//   5. Start a write pump goroutine that reads from
+	//   1. ws.HandleFunc(app, "/ws", func(conn *ws.Conn) { ... }, ws.Config{MaxMessageSize: 64 * 1024})
+	//   2. Inside the handler: create a Client{conn: conn, send: make(chan []byte, 64)}
+	//   3. hub.Register(client) and defer hub.Unregister(client)
+	//   4. Start a write pump goroutine that reads from
 	//      client.send and calls conn.WriteMessage(ws.TextMessage, msg)
-	//   6. Read loop: conn.ReadMessage() returns (msgType, data, err)
+	//   5. Read loop: conn.ReadMessage() returns (msgType, data, err)
 	//      Echo back with conn.WriteMessage(ws.TextMessage, data) and broadcast via
 	//      hub.Broadcast()
+	//
+	// Hint (registration):
+	//   ws.HandleFunc(app, "/ws", func(conn *ws.Conn) {
+	//       // ... handler body ...
+	//   }, ws.Config{
+	//       MaxMessageSize: 64 * 1024,
+	//   })
 	//
 	// Hint (write pump):
 	//   go func() {
@@ -158,6 +161,7 @@ func main() {
 	//       conn.WriteMessage(ws.TextMessage, []byte(fmt.Sprintf(`{"type":"echo","message":%q}`, string(msg))))
 	//       hub.Broadcast([]byte(fmt.Sprintf(`{"type":"broadcast","message":%q}`, string(msg))), client)
 	//   }
+	_ = ws.HandleFunc
 
 	// TODO: Register the client count endpoint using kruda.Get.
 	//
