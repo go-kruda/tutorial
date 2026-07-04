@@ -131,93 +131,89 @@ func main() {
 
 	// ── 2. Create the Kruda Application ──────────────────────
 	//
-	// WebSocket upgrade requires net/http transport because it
-	// needs http.Hijacker. Wing and fasthttp do not support this.
+	// net/http always provides http.Hijacker, so WebSocket upgrades
+	// work everywhere. Since kruda v1.6.0, WebSocket also works on
+	// the Wing transport (Linux default) via the kruda.Hijack preset
+	// -- ws.HandleFunc wires that preset for you automatically. We
+	// keep NetHTTP() here so this demo also runs on macOS: fasthttp
+	// (the macOS dev default) still does not support WebSocket.
 	app := kruda.New(kruda.NetHTTP())
 
-	// ── 3. Create the WebSocket Upgrader ─────────────────────
+	// ── 3. Register the WebSocket Endpoint ───────────────────
 	//
-	// The upgrader from contrib/ws handles the HTTP -> WebSocket
-	// upgrade (101 Switching Protocols handshake). You configure
-	// it once and reuse it for all WebSocket endpoints.
-	upgrader := ws.New(ws.Config{
-		MaxMessageSize: 64 * 1024,
-	})
-
-	// ── 4. Register the WebSocket Endpoint ───────────────────
+	// ws.HandleFunc registers a WebSocket route in one call -- it
+	// creates the upgrader, registers the route with the kruda.Hijack
+	// preset (a harmless no-op on net/http/fasthttp, required on Wing),
+	// and performs the upgrade. The handler receives a ready *ws.Conn.
 	//
-	// GET /ws is the WebSocket endpoint. Clients connect here
-	// using the browser's WebSocket API or a CLI tool like
-	// websocat / wscat:
+	// Clients connect using the browser's WebSocket API or a CLI tool
+	// like websocat / wscat:
 	//
 	//   const ws = new WebSocket("ws://localhost:3000/ws");
 	//   ws.onmessage = (e) => console.log(e.data);
 	//   ws.send("Hello!");
-	//
-	// upgrader.Upgrade() handles the HTTP -> WebSocket upgrade
-	// automatically and gives you a *ws.Conn to work with.
-	app.Get("/ws", func(c *kruda.Ctx) error {
-		return upgrader.Upgrade(c, func(conn *ws.Conn) {
-			// Create a client and register it with the hub.
-			client := &Client{
-				conn: conn,
-				send: make(chan []byte, 64),
+	ws.HandleFunc(app, "/ws", func(conn *ws.Conn) {
+		// Create a client and register it with the hub.
+		client := &Client{
+			conn: conn,
+			send: make(chan []byte, 64),
+		}
+		hub.Register(client)
+		defer hub.Unregister(client)
+
+		// Notify all other clients that someone joined.
+		hub.Broadcast(
+			[]byte(fmt.Sprintf(`{"type":"system","message":"a client joined (total: %d)"}`, hub.ClientCount())),
+			nil,
+		)
+
+		// ── Write pump ───────────────────────────────────
+		//
+		// A separate goroutine reads from the client's send
+		// channel and writes messages to the WebSocket. This
+		// decouples the broadcast fan-out from the read loop.
+		go func() {
+			for msg := range client.send {
+				if err := conn.WriteMessage(ws.TextMessage, msg); err != nil {
+					return
+				}
 			}
-			hub.Register(client)
-			defer hub.Unregister(client)
+		}()
 
-			// Notify all other clients that someone joined.
-			hub.Broadcast(
-				[]byte(fmt.Sprintf(`{"type":"system","message":"a client joined (total: %d)"}`, hub.ClientCount())),
-				nil,
-			)
-
-			// ── Write pump ───────────────────────────────────
-			//
-			// A separate goroutine reads from the client's send
-			// channel and writes messages to the WebSocket. This
-			// decouples the broadcast fan-out from the read loop.
-			go func() {
-				for msg := range client.send {
-					if err := conn.WriteMessage(ws.TextMessage, msg); err != nil {
-						return
-					}
-				}
-			}()
-
-			// ── Read pump ────────────────────────────────────
-			//
-			// The main goroutine reads messages from the WebSocket.
-			// For each message:
-			//   1. Echo it back to the sender
-			//   2. Broadcast the original message to all others
-			for {
-				_, msg, err := conn.ReadMessage()
-				if err != nil {
-					// Client disconnected or error -- exit the loop.
-					break
-				}
-
-				// Echo the message back to the sender.
-				echoMsg := fmt.Sprintf(`{"type":"echo","message":%q}`, string(msg))
-				if writeErr := conn.WriteMessage(ws.TextMessage, []byte(echoMsg)); writeErr != nil {
-					break
-				}
-
-				// Broadcast the original message to all other clients.
-				broadcastMsg := fmt.Sprintf(`{"type":"broadcast","from":"client","message":%q}`, string(msg))
-				hub.Broadcast([]byte(broadcastMsg), client)
+		// ── Read pump ────────────────────────────────────
+		//
+		// The main goroutine reads messages from the WebSocket.
+		// For each message:
+		//   1. Echo it back to the sender
+		//   2. Broadcast the original message to all others
+		for {
+			_, msg, err := conn.ReadMessage()
+			if err != nil {
+				// Client disconnected or error -- exit the loop.
+				break
 			}
 
-			// Notify others that this client left.
-			hub.Broadcast(
-				[]byte(fmt.Sprintf(`{"type":"system","message":"a client left (total: %d)"}`, hub.ClientCount())),
-				nil,
-			)
-		})
+			// Echo the message back to the sender.
+			echoMsg := fmt.Sprintf(`{"type":"echo","message":%q}`, string(msg))
+			if writeErr := conn.WriteMessage(ws.TextMessage, []byte(echoMsg)); writeErr != nil {
+				break
+			}
+
+			// Broadcast the original message to all other clients.
+			broadcastMsg := fmt.Sprintf(`{"type":"broadcast","from":"client","message":%q}`, string(msg))
+			hub.Broadcast([]byte(broadcastMsg), client)
+		}
+
+		// Notify others that this client left.
+		hub.Broadcast(
+			[]byte(fmt.Sprintf(`{"type":"system","message":"a client left (total: %d)"}`, hub.ClientCount())),
+			nil,
+		)
+	}, ws.Config{
+		MaxMessageSize: 64 * 1024,
 	})
 
-	// ── 5. Register REST Endpoints ───────────────────────────
+	// ── 4. Register REST Endpoints ───────────────────────────
 	//
 	// WebSocket and REST routes coexist on the same app. These
 	// endpoints are regular HTTP -- they don't use WebSocket.
@@ -233,7 +229,7 @@ func main() {
 		}, nil
 	})
 
-	// ── 6. Start the Server ──────────────────────────────────
+	// ── 5. Start the Server ──────────────────────────────────
 	log.Println("WebSocket server starting on :3000 ...")
 	log.Println("Endpoints:")
 	log.Println("  GET  /ws       - WebSocket endpoint")
