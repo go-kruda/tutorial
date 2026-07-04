@@ -14,8 +14,8 @@ github.com/davecgh/go-spew v1.1.2-0.20180830191138-d8f796af33cc h1:U9qPSI2PIWSS1
 github.com/davecgh/go-spew v1.1.2-0.20180830191138-d8f796af33cc/go.mod h1:J7Y8YcW2NihsgmVo/mv3lAwl/skON4iLHjSsI+c5H38=
 github.com/go-kruda/kruda v1.6.0 h1:zsRalIuHj+T0fxRUQdolTaUj7cOyaVAdFERU1kW4dfM=
 github.com/go-kruda/kruda v1.6.0/go.mod h1:dSfysslVBnQt/u+o5nVDEU587OK8zZKVT94jX4MgkTU=
-github.com/go-kruda/kruda/contrib/ws v1.2.0 h1:/jgPcJzyHS9WcYTO7ypfeeOlEQICABLq3GcoayUKPeQ=
-github.com/go-kruda/kruda/contrib/ws v1.2.0/go.mod h1:xB4MSn13W+5D1PvDIbBx5g1smvD0QYzlviWrUOIMKUo=
+github.com/go-kruda/kruda/contrib/ws v1.3.0 h1:cIAjqkdVU5sTPL8ISlwx66kcFxDGFQ++f3jIK/cKZzA=
+github.com/go-kruda/kruda/contrib/ws v1.3.0/go.mod h1:pbhPMOUsuP8LTHfnwmQyN3pWc4dAl7ws2i8X6IyvMmA=
 github.com/klauspost/compress v1.18.2 h1:iiPHWW0YrcFgpBYhsA6D1+fqHssJscY/Tm/y2Uqnapk=
 github.com/klauspost/compress v1.18.2/go.mod h1:R0h/fSBs8DE4ENlcrlib3PsXS61voFxhIs2DeRhCvJ4=
 github.com/klauspost/cpuid/v2 v2.2.9 h1:66ze0taIn2H33fBvCkXuv9BmCwDfafmiIVpKV9kKGuY=

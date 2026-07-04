@@ -4,7 +4,7 @@ go 1.25.11
 
 require (
 	github.com/go-kruda/kruda v1.6.0
-	github.com/go-kruda/kruda/contrib/ws v1.2.0
+	github.com/go-kruda/kruda/contrib/ws v1.3.0
 )
 
 require (
