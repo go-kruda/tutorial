@@ -2,7 +2,7 @@ module github.com/go-kruda/tutorial/05-production/03-benchmark/starter
 
 go 1.25.11
 
-require github.com/go-kruda/kruda v1.5.0
+require github.com/go-kruda/kruda v1.6.0
 
 require (
 	github.com/andybalholm/brotli v1.2.0 // indirect
