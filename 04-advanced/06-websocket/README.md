@@ -20,8 +20,8 @@ Welcome to the WebSocket lesson! In this lesson you will learn how to build a **
 
 By the end of this lesson you will be able to:
 
-- Use `ws.New()` to create an upgrader for WebSocket connections
-- Use `upgrader.Upgrade(c, callback)` to upgrade HTTP to WebSocket
+- Use `ws.HandleFunc(app, path, handler, cfg...)` to register a WebSocket route in one call
+- Understand how `kruda.Hijack` lets WebSocket work on the Wing transport too
 - Read messages with `conn.ReadMessage()` and write with `conn.WriteMessage()`
 - Build a Hub pattern for broadcasting messages to all clients
 - Handle client connect/disconnect correctly
@@ -102,7 +102,38 @@ Server -> Client:
   Connection: Upgrade
 ```
 
-> Kruda handles this handshake for you via the `contrib/ws` package -- `upgrader.Upgrade()` will upgrade the connection and return a `*ws.Conn` ready to use.
+> Kruda handles this handshake for you via the `contrib/ws` package -- `ws.HandleFunc` will upgrade the connection and return a `*ws.Conn` ready to use.
+
+---
+
+## ⚡ v1.6.0: WebSocket on the Wing Transport, and a Security Fix
+
+Since kruda **v1.6.0**, WebSocket upgrades also work on the high-performance
+**Wing** transport (the Linux default) via a new `kruda.Hijack` route preset.
+`ws.HandleFunc` wires that preset for you automatically:
+
+```go
+ws.HandleFunc(app, "/ws", handler, cfg...)
+```
+
+| Transport | Default on | WebSocket |
+|---|---|---|
+| net/http (`kruda.NetHTTP()`) | TLS / Windows | ✅ always (via `http.Hijacker`) |
+| Wing | Linux | ✅ with the `kruda.Hijack` preset (automatic via `ws.HandleFunc`) |
+| fasthttp | macOS dev | ❌ not supported |
+
+> 💡 This lesson keeps `kruda.New(kruda.NetHTTP())` so it runs on every OS
+> (macOS fasthttp still can't upgrade to WebSocket). On a Linux/Wing
+> deployment, `ws.HandleFunc` already does the right thing -- no code change
+> needed.
+
+**Security note:** kruda v1.6.0 also ships a `contrib/ws` fix (v1.3.0) for a
+WebSocket frame-parser gap: a client-declared control-frame payload length was
+not bounded before allocating a buffer for it (an unbounded-allocation denial
+of service), and unmasked client frames were accepted in violation of
+[RFC 6455 §5.1](https://www.rfc-editor.org/rfc/rfc6455#section-5.1). Both are
+fixed in `contrib/ws` v1.3.0 -- always run the latest `contrib/ws` in
+production.
 
 ---
 
@@ -190,70 +221,67 @@ func (h *Hub) Broadcast(message []byte, sender *Client) {
 
 ### Step 4: Write the WebSocket Handler
 
-This is the heart of the lesson! Create an upgrader and WebSocket endpoint in `main()`:
+This is the heart of the lesson! Register the WebSocket endpoint with `ws.HandleFunc` in `main()`:
 
 ```go
-// Create a WebSocket upgrader
-upgrader := ws.New(ws.Config{
+// Register the WebSocket endpoint. ws.HandleFunc creates the upgrader,
+// registers the route (wiring the kruda.Hijack preset so this also works
+// on the Wing transport), and calls your handler with a ready *ws.Conn.
+ws.HandleFunc(app, "/ws", func(conn *ws.Conn) {
+    // Create a client and register with the hub
+    client := &Client{
+        conn: conn,
+        send: make(chan []byte, 64),
+    }
+    hub.Register(client)
+    defer hub.Unregister(client)
+
+    // Notify other clients that someone joined
+    hub.Broadcast(
+        []byte(fmt.Sprintf(`{"type":"system","message":"a client joined (total: %d)"}`, hub.ClientCount())),
+        nil,
+    )
+
+    // Write pump -- separate goroutine for sending messages
+    go func() {
+        for msg := range client.send {
+            if err := conn.WriteMessage(ws.TextMessage, msg); err != nil {
+                return
+            }
+        }
+    }()
+
+    // Read pump -- read messages from the client
+    for {
+        _, msg, err := conn.ReadMessage()
+        if err != nil {
+            break
+        }
+
+        // Echo back to the sender
+        echoMsg := fmt.Sprintf(`{"type":"echo","message":%q}`, string(msg))
+        if writeErr := conn.WriteMessage(ws.TextMessage, []byte(echoMsg)); writeErr != nil {
+            break
+        }
+
+        // Broadcast to other clients
+        broadcastMsg := fmt.Sprintf(`{"type":"broadcast","from":"client","message":%q}`, string(msg))
+        hub.Broadcast([]byte(broadcastMsg), client)
+    }
+
+    // Notify other clients that someone left
+    hub.Broadcast(
+        []byte(fmt.Sprintf(`{"type":"system","message":"a client left (total: %d)"}`, hub.ClientCount())),
+        nil,
+    )
+}, ws.Config{
     MaxMessageSize: 64 * 1024,
-})
-
-// Register the WebSocket endpoint
-app.Get("/ws", func(c *kruda.Ctx) error {
-    return upgrader.Upgrade(c, func(conn *ws.Conn) {
-        // Create a client and register with the hub
-        client := &Client{
-            conn: conn,
-            send: make(chan []byte, 64),
-        }
-        hub.Register(client)
-        defer hub.Unregister(client)
-
-        // Notify other clients that someone joined
-        hub.Broadcast(
-            []byte(fmt.Sprintf(`{"type":"system","message":"a client joined (total: %d)"}`, hub.ClientCount())),
-            nil,
-        )
-
-        // Write pump -- separate goroutine for sending messages
-        go func() {
-            for msg := range client.send {
-                if err := conn.WriteMessage(ws.TextMessage, msg); err != nil {
-                    return
-                }
-            }
-        }()
-
-        // Read pump -- read messages from the client
-        for {
-            _, msg, err := conn.ReadMessage()
-            if err != nil {
-                break
-            }
-
-            // Echo back to the sender
-            echoMsg := fmt.Sprintf(`{"type":"echo","message":%q}`, string(msg))
-            if writeErr := conn.WriteMessage(ws.TextMessage, []byte(echoMsg)); writeErr != nil {
-                break
-            }
-
-            // Broadcast to other clients
-            broadcastMsg := fmt.Sprintf(`{"type":"broadcast","from":"client","message":%q}`, string(msg))
-            hub.Broadcast([]byte(broadcastMsg), client)
-        }
-
-        // Notify other clients that someone left
-        hub.Broadcast(
-            []byte(fmt.Sprintf(`{"type":"system","message":"a client left (total: %d)"}`, hub.ClientCount())),
-            nil,
-        )
-    })
 })
 ```
 
-> `upgrader.Upgrade(c, callback)` handles the HTTP -> WebSocket upgrade automatically -- the callback function receives a `*ws.Conn` ready to use.
+> `ws.HandleFunc(app, path, handler, cfg...)` handles the HTTP -> WebSocket upgrade automatically -- the handler function receives a `*ws.Conn` ready to use. Under the hood it does exactly what `ws.New(cfg...)` + `app.Get(path, func(c *kruda.Ctx) error { return upgrader.Upgrade(c, handler) })` did before -- it is a shorter, transport-safe way to write the same thing.
 
-> `conn.ReadMessage()` returns `(messageType int, data []byte, err error)` and `conn.WriteMessage(data []byte)` returns `error`
+> `conn.ReadMessage()` returns `(messageType int, data []byte, err error)` and `conn.WriteMessage(messageType int, data []byte)` returns `error`
 
 ### Step 5: Add REST Endpoints
 
@@ -349,10 +377,10 @@ diff starter/main.go complete/main.go
 | Concept | Description |
 |---|---|
 | `contrib/ws` package | WebSocket package separate from core Kruda |
-| `ws.New(config)` | Create a WebSocket upgrader with configuration |
-| `upgrader.Upgrade(c, callback)` | Upgrade HTTP to WebSocket and invoke the callback with `*ws.Conn` |
+| `ws.HandleFunc(app, path, handler, cfg...)` | Register a WebSocket route in one call -- works on net/http and Wing |
+| `kruda.Hijack` | Route preset that lets a Wing route hand off its raw connection via `http.Hijacker` (wired automatically by `ws.HandleFunc`) |
 | `conn.ReadMessage()` | Read a message from a WebSocket client, returns `(msgType, data, err)` |
-| `conn.WriteMessage(data)` | Write a message to a WebSocket client |
+| `conn.WriteMessage(msgType, data)` | Write a message to a WebSocket client |
 | `conn.Close(code, reason)` | Close a WebSocket connection |
 | Hub pattern | Pub/sub broker for fan-out messages to multiple clients |
 | Write pump | Separate goroutine for writing messages to WebSocket |
