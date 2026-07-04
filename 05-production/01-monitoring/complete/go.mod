@@ -3,7 +3,7 @@ module github.com/go-kruda/tutorial/05-production/01-monitoring/complete
 go 1.25.11
 
 require (
-	github.com/go-kruda/kruda v1.5.0
+	github.com/go-kruda/kruda v1.6.0
 	github.com/go-kruda/kruda/contrib/prometheus v1.2.0
 )
 
