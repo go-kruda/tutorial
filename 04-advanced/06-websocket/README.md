@@ -279,7 +279,7 @@ ws.HandleFunc(app, "/ws", func(conn *ws.Conn) {
 })
 ```
 
-> `ws.HandleFunc(app, path, handler, cfg...)` handles the HTTP -> WebSocket upgrade automatically -- the handler function receives a `*ws.Conn` ready to use. Under the hood it does exactly what `ws.New(cfg...)` + `app.Get(path, func(c *kruda.Ctx) error { return upgrader.Upgrade(c, handler) })` did before -- it is a shorter, transport-safe way to write the same thing.
+> `ws.HandleFunc(app, path, handler, cfg...)` handles the HTTP -> WebSocket upgrade automatically -- the handler function receives a `*ws.Conn` ready to use. Under the hood it does what `ws.New(cfg...)` + an `app.Get` upgrade wrapper did before, plus it wires the `kruda.Hijack` preset automatically -- which is what makes the same call also work on the Wing transport.
 
 > `conn.ReadMessage()` returns `(messageType int, data []byte, err error)` and `conn.WriteMessage(messageType int, data []byte)` returns `error`
 
