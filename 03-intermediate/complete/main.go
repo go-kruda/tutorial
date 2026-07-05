@@ -117,7 +117,17 @@ func main() {
 	defer db.Close()
 
 	// ── 3. Create the Kruda Application ───────────────────────
-	app := kruda.New()
+	//
+	// kruda.WithValidator(kruda.NewValidator()) activates the `validate`
+	// tags on CreateUserInput (Step 2's types) -- until this option is
+	// set, those tags do nothing and POST /users never validates input.
+	// kruda.WithProblemJSON() renders every KrudaError as an RFC 9457
+	// application/problem+json document instead of the plain {code,
+	// message} shape.
+	app := kruda.New(
+		kruda.WithValidator(kruda.NewValidator()),
+		kruda.WithProblemJSON(),
+	)
 
 	// ── 4. Register Routes ────────────────────────────────────
 	//
@@ -163,7 +173,11 @@ func main() {
 			"SELECT id, name, email FROM users WHERE id = $1", c.In.ID,
 		).Scan(&user.ID, &user.Name, &user.Email)
 		if err == sql.ErrNoRows {
-			return nil, kruda.NotFound(fmt.Sprintf("user with id %d not found", c.In.ID))
+			// .WithType()/.With() enrich the problem+json body with an
+			// RFC 9457 "type" URI and a custom "userId" extension member.
+			return nil, kruda.NotFound(fmt.Sprintf("user with id %d not found", c.In.ID)).
+				WithType("https://errors.example.com/not-found").
+				With("userId", c.In.ID)
 		}
 		if err != nil {
 			return nil, kruda.InternalError(fmt.Sprintf("query user: %v", err))
