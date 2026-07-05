@@ -89,7 +89,14 @@ func main() {
 	}
 	defer db.Close()
 
-	app := kruda.New()
+	// kruda.WithValidator(kruda.NewValidator()) activates the `validate`
+	// tags on CreateUserInput -- without it, POST /users never validates
+	// input. kruda.WithProblemJSON() renders errors as RFC 9457
+	// application/problem+json instead of the plain {code, message} shape.
+	app := kruda.New(
+		kruda.WithValidator(kruda.NewValidator()),
+		kruda.WithProblemJSON(),
+	)
 
 	// TODO: Register route GET /users -- fetch all users
 	//
@@ -117,8 +124,13 @@ func main() {
 	// TODO: Register route GET /users/:id -- fetch a user by ID
 	//
 	// Hint: c.In.ID will be automatically parsed from :id (param:"id" tag)
-	//   Use sql.ErrNoRows to check if no data was found
-	//   return nil, kruda.NotFound("user not found")
+	//   Use sql.ErrNoRows to check if no data was found. Chain
+	//   .WithType(...).With(...) on the NotFound error to add RFC 9457
+	//   problem+json fields:
+	//
+	//   return nil, kruda.NotFound(fmt.Sprintf("user with id %d not found", c.In.ID)).
+	//       WithType("https://errors.example.com/not-found").
+	//       With("userId", c.In.ID)
 
 	// TODO: Register route DELETE /users/:id -- delete a user by ID
 	//
