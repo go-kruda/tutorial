@@ -57,8 +57,15 @@ func main() {
 
 	// TODO: Create a new Kruda application instance.
 	//
-	// Example:
-	//   app := kruda.New()
+	// Example (add Wing accept-side DoS limits -- live only on
+	// Linux/Wing, the transport this container runs; they silently
+	// do nothing on fasthttp/net/http):
+	//   app := kruda.New(
+	//       kruda.WithMaxConns(1024),
+	//       kruda.WithMaxConnsPerIP(64),
+	//       kruda.WithMaxAcceptRate(100, 200),
+	//       kruda.WithHeaderLimit(16 * 1024),
+	//   )
 	var app *kruda.App
 
 	// TODO: Register routes using kruda.Get:
