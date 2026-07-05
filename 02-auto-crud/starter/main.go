@@ -15,8 +15,8 @@ import (
 // Product represents a product in our catalogue.
 type Product struct {
 	ID    int     `json:"id"`
-	Name  string  `json:"name"`
-	Price float64 `json:"price"`
+	Name  string  `json:"name" validate:"required"`
+	Price float64 `json:"price" validate:"required,gt=0"`
 	Stock int     `json:"stock"`
 }
 
@@ -53,19 +53,22 @@ func (s *ProductService) List(_ context.Context, page, limit int) ([]Product, in
 	return nil, 0, nil
 }
 
-// TODO: implement Create -- create a new product with validation
+// TODO: implement Create -- persist a new product
 //
-// Hint: Validate that item.Name != "" and item.Price > 0
-//   Assign ID automatically from s.nextID
+// Hint: Field-shape validation (Name required, Price > 0) is handled
+//   automatically by the `validate` tags on Product once
+//   kruda.WithValidator(...) is set below -- this method only needs
+//   to assign an ID and persist the item.
 func (s *ProductService) Create(_ context.Context, item Product) (Product, error) {
-	// TODO: validate and persist
+	// TODO: persist
 	return Product{}, nil
 }
 
 // TODO: implement Get -- fetch a product by ID
 //
 // Hint: Loop to find the item with a matching ID
-//   If not found, return error
+//   If not found, return kruda.NotFound(fmt.Sprintf("product with id %d not found", id))
+//   -- a plain error would resolve to 500 instead of 404
 func (s *ProductService) Get(_ context.Context, id int) (Product, error) {
 	// TODO: find by ID
 	return Product{}, nil
@@ -75,6 +78,7 @@ func (s *ProductService) Get(_ context.Context, id int) (Product, error) {
 //
 // Hint: Find the item with a matching ID and replace it with the new values
 //   Don't forget item.ID = id to preserve the original ID
+//   If not found, return kruda.NotFound(fmt.Sprintf("product with id %d not found", id))
 func (s *ProductService) Update(_ context.Context, id int, item Product) (Product, error) {
 	// TODO: find and update
 	return Product{}, nil
@@ -83,6 +87,7 @@ func (s *ProductService) Update(_ context.Context, id int, item Product) (Produc
 // TODO: implement Delete -- delete a product by ID
 //
 // Hint: Find the item with a matching ID and remove it from the slice
+//   If not found, return kruda.NotFound(fmt.Sprintf("product with id %d not found", id))
 func (s *ProductService) Delete(_ context.Context, id int) error {
 	// TODO: find and delete
 	return nil
@@ -93,7 +98,9 @@ func (s *ProductService) Delete(_ context.Context, id int) error {
 // ============================================================
 
 func main() {
-	app := kruda.New()
+	// kruda.WithValidator(kruda.NewValidator()) activates the `validate`
+	// tags on Product (Name required, Price > 0).
+	app := kruda.New(kruda.WithValidator(kruda.NewValidator()))
 	svc := NewProductService()
 
 	// TODO: Register Auto CRUD for Product
