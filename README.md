@@ -46,7 +46,7 @@ Follow the sections in order for the best experience. Each builds on the previou
 | 02 | **Auto CRUD** | Model-driven CRUD generation | 30 min |
 | 03 | **Intermediate** | DB integration, Docker, config, error handling | 45 min |
 | 04 | **Advanced** | DI Container, Auth Middleware, OpenAPI, SSE, MCP Server, WebSocket, Testing, Architecture | 2–3 hrs |
-| 05 | **Production** | Monitoring, Docker deploy, benchmarking | 1–2 hrs |
+| 05 | **Production** | Monitoring, Docker deploy, benchmarking, observability | 1–2 hrs |
 
 > 💡 **Total estimated time:** ~5–6 hours for the full course.
 
@@ -78,6 +78,7 @@ Each section maps to concrete skills you'll gain:
 | Prometheus monitoring | | | | | | ✅ |
 | Docker deployment | | | | | | ✅ |
 | Benchmarking | | | | | | ✅ |
+| OpenTelemetry / observability | | | | | | ✅ |
 
 ---
 
@@ -184,13 +185,19 @@ go-kruda/tutorial/
     │       ├── go.mod
     │       ├── main.go
     │       └── Dockerfile
-    └── 03-benchmark/
+    ├── 03-benchmark/
+    │   ├── README.md
+    │   ├── starter/ ...
+    │   └── complete/
+    │       ├── go.mod
+    │       ├── main.go
+    │       └── benchmark_test.go
+    └── 04-observability/
         ├── README.md
         ├── starter/ ...
         └── complete/
             ├── go.mod
-            ├── main.go
-            └── benchmark_test.go
+            └── main.go
 ```
 
 ---
