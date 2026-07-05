@@ -23,7 +23,8 @@ By the end of this lesson you will be able to:
 - ✅ Explain how Auto CRUD works and how it differs from writing handlers manually
 - ✅ Define a model struct for Auto CRUD
 - ✅ Implement the `ResourceService[T, ID]` interface with 5 methods: `List`, `Create`, `Get`, `Update`, `Delete`
-- ✅ Add validation and business logic in service methods
+- ✅ Add automatic validation with `validate` tags + `kruda.WithValidator(...)`, and business logic in service methods
+- ✅ Return `kruda.NotFound()` from a service method to get a real 404
 - ✅ Register a model with `kruda.Resource[T, ID]()` to automatically generate 5 endpoints
 
 ---
@@ -100,13 +101,13 @@ The starter file already has a `Product` struct prepared for you:
 ```go
 type Product struct {
     ID    int     `json:"id"`
-    Name  string  `json:"name"`
-    Price float64 `json:"price"`
+    Name  string  `json:"name" validate:"required"`
+    Price float64 `json:"price" validate:"required,gt=0"`
     Stock int     `json:"stock"`
 }
 ```
 
-> 🧩 The model struct uses `json` tags for JSON serialisation — Kruda will use this struct as a type parameter in `kruda.Resource[Product, int]()` to generate type-safe endpoints
+> 🧩 The model struct uses `json` tags for JSON serialisation and `validate` tags for automatic input validation — Kruda will use this struct as a type parameter in `kruda.Resource[Product, int]()` to generate type-safe, validated endpoints
 
 ### Step 3: Understand the ResourceService Interface
 
@@ -165,17 +166,12 @@ func (s *ProductService) List(_ context.Context, page, limit int) ([]Product, in
 
 > 🎯 `page` and `limit` are automatically extracted from query strings (`?page=1&limit=20`) by the framework — you just receive and use the values
 
-### Step 6: Implement the Create Method with Validation
+### Step 6: Implement the Create Method
+
+Since kruda **v1.4.0**, `kruda.Resource` validates create/update request bodies automatically -- using the `validate` tags on your model (Step 2) plus `kruda.WithValidator(...)` (Step 8) -- and returns a `422` *before* your service method is even called. `Create` only needs to persist the item:
 
 ```go
 func (s *ProductService) Create(_ context.Context, item Product) (Product, error) {
-    if item.Name == "" {
-        return Product{}, fmt.Errorf("product name is required")
-    }
-    if item.Price <= 0 {
-        return Product{}, fmt.Errorf("price must be greater than zero")
-    }
-
     s.mu.Lock()
     defer s.mu.Unlock()
 
@@ -186,7 +182,7 @@ func (s *ProductService) Create(_ context.Context, item Product) (Product, error
 }
 ```
 
-> 🔧 Validation logic lives directly in the service method — if the input is invalid, return an error and the framework will automatically respond with 400/422
+> 🔧 Field-shape checks (required, format, ranges) belong on the model as `validate` tags -- the framework enforces them for you. Keep manual checks in the service only for cross-field or business rules that can't be expressed as a tag (there aren't any in this example). Without `kruda.WithValidator(...)` set on the app, `validate` tags do nothing -- Step 8 wires it up.
 
 ### Step 7: Implement Get, Update, Delete Methods
 
@@ -200,7 +196,7 @@ func (s *ProductService) Get(_ context.Context, id int) (Product, error) {
             return p, nil
         }
     }
-    return Product{}, fmt.Errorf("product with id %d not found", id)
+    return Product{}, kruda.NotFound(fmt.Sprintf("product with id %d not found", id))
 }
 
 func (s *ProductService) Update(_ context.Context, id int, item Product) (Product, error) {
@@ -214,7 +210,7 @@ func (s *ProductService) Update(_ context.Context, id int, item Product) (Produc
             return item, nil
         }
     }
-    return Product{}, fmt.Errorf("product with id %d not found", id)
+    return Product{}, kruda.NotFound(fmt.Sprintf("product with id %d not found", id))
 }
 
 func (s *ProductService) Delete(_ context.Context, id int) error {
@@ -227,9 +223,11 @@ func (s *ProductService) Delete(_ context.Context, id int) error {
             return nil
         }
     }
-    return fmt.Errorf("product with id %d not found", id)
+    return kruda.NotFound(fmt.Sprintf("product with id %d not found", id))
 }
 ```
+
+> ⚠️ Fix: these three methods used to return a plain `fmt.Errorf(...)` on a missing ID, which `kruda.Resource` resolves to a generic `500` -- not the `404` you'd expect. Returning `kruda.NotFound(...)` (a `*KrudaError`) flows through unchanged and renders as a real `404`.
 
 ### Step 8: Create the App and Register Auto CRUD
 
@@ -237,7 +235,9 @@ This is the heart of the lesson! Replace the `// TODO:` in `main()`:
 
 ```go
 func main() {
-    app := kruda.New()
+    // kruda.WithValidator(kruda.NewValidator()) activates the `validate`
+    // tags on Product -- without it, the tags do nothing.
+    app := kruda.New(kruda.WithValidator(kruda.NewValidator()))
 
     svc := NewProductService()
 
@@ -293,6 +293,14 @@ curl -X PUT http://localhost:3000/products/1 \
 
 # Delete a product
 curl -X DELETE http://localhost:3000/products/1
+
+# Test validation -- 422, name is required and price must be > 0
+curl -X POST http://localhost:3000/products \
+  -H "Content-Type: application/json" \
+  -d '{"name":"","price":0,"stock":10}'
+
+# Test 404 -- now a real 404, not 500
+curl http://localhost:3000/products/999
 ```
 
 If everything works correctly, you will see JSON responses returned for each command 🎉
@@ -316,9 +324,11 @@ diff starter/main.go complete/main.go
 | Auto CRUD | A feature that automatically generates CRUD endpoints from a `ResourceService` interface |
 | `ResourceService[T, ID]` | An interface requiring 5 methods: `List`, `Create`, `Get`, `Update`, `Delete` |
 | `kruda.Resource[T, ID]()` | Registers a service to generate 5 CRUD endpoints in a single line |
+| `kruda.WithValidator(kruda.NewValidator())` | Activates `validate` struct tags -- required for Resource's auto-validation |
+| `validate` struct tags | Declarative field-shape validation on your model (e.g. `required`, `gt=0`) -- Resource enforces them before your service runs |
 | `WithResourceMiddleware` | Adds middleware for a resource |
 | `WithResourceOnly` / `WithResourceExcept` | Include/exclude HTTP methods to generate |
-| Service-based validation | Put validation logic directly in service methods |
+| `kruda.NotFound()` in a service method | Returns a real 404 from `Get`/`Update`/`Delete` -- a plain error resolves to 500 |
 
 ---
 
