@@ -66,7 +66,30 @@ func main() {
 	// kruda.New() initialises the app with Wing Transport --
 	// Kruda's high-performance epoll-based networking layer.
 	// This works identically inside a Docker container.
-	app := kruda.New()
+	//
+	// The options below are accept-side DoS limits, live only on
+	// the Wing transport (Linux -- exactly what this container
+	// runs). They silently do nothing on fasthttp (macOS dev
+	// default) or net/http (Windows) -- if you test locally on
+	// macOS and see no effect, that's expected; they only take
+	// hold once deployed to this Linux container.
+	app := kruda.New(
+		// Cap total accepted connections. Over the limit, new
+		// connections are closed with a TCP RST at accept time --
+		// never an HTTP 503 -- so this must be sized generously
+		// enough for real traffic (0 would disable the cap; leaving
+		// it unset derives a default from the process's fd ulimit).
+		kruda.WithMaxConns(1024),
+		// Cap concurrent connections from a single IP -- guards
+		// against one client exhausting the connection pool.
+		kruda.WithMaxConnsPerIP(64),
+		// Token-bucket accept rate: 100 accepts/sec sustained, a
+		// burst of up to 200.
+		kruda.WithMaxAcceptRate(100, 200),
+		// Cap total request-header size (default 8 KB); large
+		// Authorization/Cookie headers otherwise hit an HTTP 431.
+		kruda.WithHeaderLimit(16 * 1024),
+	)
 
 	// -- 3. Register Routes --------------------------------
 	//
