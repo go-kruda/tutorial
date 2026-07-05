@@ -25,6 +25,9 @@ By the end of this lesson you'll be able to:
 - ✅ Use `kruda.WithOpenAPITag()` to define tag group descriptions
 - ✅ Use `kruda.WithTags()` to group endpoints in the spec
 - ✅ Use `kruda.WithDescription()` to describe each operation
+- ✅ Activate automatic `422` validation with `kruda.WithValidator(kruda.NewValidator())`
+- ✅ Register a security scheme with `kruda.WithOpenAPIBearerAuth()` and require it per-route with `kruda.WithOpenAPISecurity()`
+- ✅ Add request/response examples with `kruda.WithRequestExample()` / `kruda.WithResponseExample()`
 - ✅ Access the OpenAPI spec at `/openapi.json`
 - ✅ View interactive API docs at `/docs` (Swagger UI)
 - ✅ Understand how request/response types are automatically converted to JSON Schema
@@ -119,10 +122,16 @@ app := kruda.New(
     ),
     kruda.WithOpenAPITag("Products", "Product management operations"),
     kruda.WithOpenAPITag("Orders", "Order management operations"),
+    kruda.WithValidator(kruda.NewValidator()),
+    kruda.WithOpenAPIBearerAuth("bearerAuth"),
 )
 ```
 
 > 📄 `WithOpenAPIInfo()` sets the metadata (title, version, description) that appears at the top of the OpenAPI 3.0 spec — while `WithOpenAPITag()` defines the description for each tag group in the spec
+
+> ✅ `kruda.WithValidator(kruda.NewValidator())` activates the `validate` tags already on `CreateProductInput`/`CreateOrderInput` (Step 2's types) -- without it, those tags are silently ignored and no `422` response is ever generated or documented in the spec.
+
+> 🔐 `kruda.WithOpenAPIBearerAuth("bearerAuth")` registers an HTTP bearer security scheme under the spec's `components.securitySchemes` -- Step 4 requires it on specific routes.
 
 ### Step 4: Register Product Routes with Metadata
 
@@ -158,6 +167,20 @@ kruda.Post[CreateProductInput, ProductResponse](app, "/products",
     },
     kruda.WithDescription("Create a new product"),
     kruda.WithTags("Products"),
+    kruda.WithOpenAPISecurity("bearerAuth"),
+    kruda.WithRequestExample(CreateProductInput{
+        Name:        "Kruda T-Shirt",
+        Description: "Official merch",
+        Price:       590,
+        Category:    "apparel",
+    }),
+    kruda.WithResponseExample(ProductResponse{
+        ID:          1,
+        Name:        "Kruda T-Shirt",
+        Description: "Official merch",
+        Price:       590,
+        Category:    "apparel",
+    }),
 )
 
 kruda.Get[GetProductInput, ProductResponse](app, "/products/:id",
@@ -181,6 +204,10 @@ kruda.Get[GetProductInput, ProductResponse](app, "/products/:id",
 > 🏷️ `WithTags("Products")` groups endpoints in Swagger UI — making the API documentation easier to read
 
 > 📝 `WithDescription("...")` adds a short description to each operation in the spec
+
+> 🔐 `kruda.WithOpenAPISecurity("bearerAuth")` marks `POST /products` as requiring the `bearerAuth` scheme in the spec's `security` array. **This lesson documents the requirement but doesn't enforce it** -- no auth middleware is added here (see [Section 04-02 — Auth Middleware](../02-auth-middleware/) for real JWT enforcement). Check `/openapi.json` and you'll see the `security` requirement even though the route itself doesn't check a token.
+
+> 📎 `kruda.WithRequestExample(...)` / `kruda.WithResponseExample(...)` populate the `example` field on the request/response schema in the spec -- visible in Swagger UI at `/docs` and useful for API consumers who want a concrete sample payload.
 
 ### Step 5: Register Order Routes
 
@@ -230,6 +257,7 @@ kruda.Post[CreateOrderInput, OrderResponse](app, "/orders",
     },
     kruda.WithDescription("Create a new order"),
     kruda.WithTags("Orders"),
+    kruda.WithOpenAPISecurity("bearerAuth"),
 )
 
 kruda.Get[GetOrderInput, OrderResponse](app, "/orders/:id",
@@ -277,7 +305,13 @@ curl -X POST http://localhost:3000/orders \
   -H "Content-Type: application/json" \
   -d '{"product_id":1,"quantity":2}'
 
-# View the OpenAPI spec
+# Test validation -- 422, name is required and price must be > 0
+curl -X POST http://localhost:3000/products \
+  -H "Content-Type: application/json" \
+  -d '{"name":"","price":0}'
+
+# View the OpenAPI spec -- note "security" on POST /products and /orders,
+# and "example" on the CreateProductInput/ProductResponse schemas
 curl http://localhost:3000/openapi.json
 ```
 
@@ -304,6 +338,10 @@ diff starter/main.go complete/main.go
 |---|---|
 | `kruda.WithOpenAPIInfo()` | Option in `kruda.New()` for setting title, version, description |
 | `kruda.WithOpenAPITag()` | Option in `kruda.New()` for defining tag group descriptions |
+| `kruda.WithValidator(kruda.NewValidator())` | Activates `validate` struct tags -- required for `422` responses to appear |
+| `kruda.WithOpenAPIBearerAuth(name)` | Registers an HTTP bearer security scheme in the spec |
+| `kruda.WithOpenAPISecurity(name, scopes...)` | Marks a route as requiring a security scheme (spec metadata only) |
+| `kruda.WithRequestExample(v)` / `kruda.WithResponseExample(v)` | Adds an example payload to a route's request/response schema |
 | `kruda.WithTags()` | Groups endpoints in the OpenAPI spec |
 | `kruda.WithDescription()` | Adds a short description to each operation |
 | `kruda.Get[In, Out]()` | Registers a GET route with an inline typed handler |
