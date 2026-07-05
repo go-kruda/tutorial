@@ -29,5 +29,7 @@ use (
 	./05-production/02-docker-deploy/starter
 	./05-production/03-benchmark/complete
 	./05-production/03-benchmark/starter
+	./05-production/04-observability/complete
+	./05-production/04-observability/starter
 	./tests
 )
