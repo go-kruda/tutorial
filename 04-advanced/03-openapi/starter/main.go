@@ -63,20 +63,36 @@ func main() {
 	//       kruda.WithOpenAPIInfo("title", "1.0.0", "description"),
 	//       kruda.WithOpenAPITag("Products", "Product operations"),
 	//       kruda.WithOpenAPITag("Orders", "Order operations"),
+	//       kruda.WithValidator(kruda.NewValidator()),   // activates the validate tags above
+	//       kruda.WithOpenAPIBearerAuth("bearerAuth"),   // registers a security scheme
 	//   )
 	app := kruda.New()
 
 	// TODO: Register Product routes with OpenAPI metadata
 	//
-	// Hint: Use kruda.WithDescription() and kruda.WithTags() as route options
+	// Hint: Use kruda.WithDescription() and kruda.WithTags() as route options.
+	//   On POST /products, also add kruda.WithOpenAPISecurity("bearerAuth")
+	//   and kruda.WithRequestExample(...)/kruda.WithResponseExample(...) to
+	//   show a security requirement and example payloads in the spec:
 	//
 	//   kruda.Get[struct{}, []ProductResponse](app, "/products",
 	//       handler,
 	//       kruda.WithDescription("List all products"),
 	//       kruda.WithTags("Products"),
 	//   )
+	//
+	//   kruda.Post[CreateProductInput, ProductResponse](app, "/products",
+	//       handler,
+	//       kruda.WithDescription("Create a new product"),
+	//       kruda.WithTags("Products"),
+	//       kruda.WithOpenAPISecurity("bearerAuth"),
+	//       kruda.WithRequestExample(CreateProductInput{Name: "Kruda T-Shirt", Price: 590, Category: "apparel"}),
+	//       kruda.WithResponseExample(ProductResponse{ID: 1, Name: "Kruda T-Shirt", Price: 590, Category: "apparel"}),
+	//   )
 
 	// TODO: Register Order routes with OpenAPI metadata
+	//
+	// Hint: Add kruda.WithOpenAPISecurity("bearerAuth") to POST /orders too.
 
 	_ = &mu
 	_ = products
