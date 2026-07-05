@@ -83,6 +83,13 @@ func main() {
 		),
 		kruda.WithOpenAPITag("Products", "Product management operations"),
 		kruda.WithOpenAPITag("Orders", "Order management operations"),
+		// WithValidator activates the `validate` tags already present on
+		// CreateProductInput/CreateOrderInput -- without it, those tags do
+		// nothing and no 422 response is ever generated.
+		kruda.WithValidator(kruda.NewValidator()),
+		// WithOpenAPIBearerAuth registers a "bearerAuth" security scheme
+		// in the spec's components.securitySchemes.
+		kruda.WithOpenAPIBearerAuth("bearerAuth"),
 	)
 
 	// ── 2. Register Product Routes ───────────────────────────
@@ -121,6 +128,23 @@ func main() {
 		},
 		kruda.WithDescription("Create a new product"),
 		kruda.WithTags("Products"),
+		// WithOpenAPISecurity documents that this route requires the
+		// "bearerAuth" scheme -- this is spec metadata only; no auth
+		// middleware is added here (see Section 04-02 for real enforcement).
+		kruda.WithOpenAPISecurity("bearerAuth"),
+		kruda.WithRequestExample(CreateProductInput{
+			Name:        "Kruda T-Shirt",
+			Description: "Official merch",
+			Price:       590,
+			Category:    "apparel",
+		}),
+		kruda.WithResponseExample(ProductResponse{
+			ID:          1,
+			Name:        "Kruda T-Shirt",
+			Description: "Official merch",
+			Price:       590,
+			Category:    "apparel",
+		}),
 	)
 
 	kruda.Get[GetProductInput, ProductResponse](app, "/products/:id",
@@ -183,6 +207,7 @@ func main() {
 		},
 		kruda.WithDescription("Create a new order"),
 		kruda.WithTags("Orders"),
+		kruda.WithOpenAPISecurity("bearerAuth"),
 	)
 
 	kruda.Get[GetOrderInput, OrderResponse](app, "/orders/:id",
