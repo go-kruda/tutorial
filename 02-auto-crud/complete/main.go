@@ -32,8 +32,8 @@ import (
 // Product represents a product in our catalogue.
 type Product struct {
 	ID    int     `json:"id"`
-	Name  string  `json:"name"`
-	Price float64 `json:"price"`
+	Name  string  `json:"name" validate:"required"`
+	Price float64 `json:"price" validate:"required,gt=0"`
 	Stock int     `json:"stock"`
 }
 
@@ -95,17 +95,14 @@ func (s *ProductService) List(_ context.Context, page, limit int) ([]Product, in
 	return result, total, nil
 }
 
-// Create validates and persists a new product.
-// Validation logic lives here -- if the input is invalid,
-// return an error and the framework responds with 400/422.
+// Create persists a new product. Field-shape validation (Name
+// required, Price > 0) is now handled declaratively by the
+// `validate` tags on Product plus kruda.WithValidator(...) below --
+// kruda.Resource validates the request body and returns a 422
+// before Create is even called, so this method only needs to
+// handle persistence. Put cross-field or business-rule checks that
+// can't be expressed as tags here instead.
 func (s *ProductService) Create(_ context.Context, item Product) (Product, error) {
-	if item.Name == "" {
-		return Product{}, fmt.Errorf("product name is required")
-	}
-	if item.Price <= 0 {
-		return Product{}, fmt.Errorf("price must be greater than zero")
-	}
-
 	s.mu.Lock()
 	defer s.mu.Unlock()
 
@@ -125,7 +122,10 @@ func (s *ProductService) Get(_ context.Context, id int) (Product, error) {
 			return p, nil
 		}
 	}
-	return Product{}, fmt.Errorf("product with id %d not found", id)
+	// kruda.NotFound (a *KrudaError) flows through Resource's generated
+	// handler unchanged, rendering as a real 404 -- a plain error here
+	// would resolve to 500 instead.
+	return Product{}, kruda.NotFound(fmt.Sprintf("product with id %d not found", id))
 }
 
 // Update replaces a product's data by ID.
@@ -140,7 +140,7 @@ func (s *ProductService) Update(_ context.Context, id int, item Product) (Produc
 			return item, nil
 		}
 	}
-	return Product{}, fmt.Errorf("product with id %d not found", id)
+	return Product{}, kruda.NotFound(fmt.Sprintf("product with id %d not found", id))
 }
 
 // Delete removes a product by ID.
@@ -154,7 +154,7 @@ func (s *ProductService) Delete(_ context.Context, id int) error {
 			return nil
 		}
 	}
-	return fmt.Errorf("product with id %d not found", id)
+	return kruda.NotFound(fmt.Sprintf("product with id %d not found", id))
 }
 
 // ============================================================
@@ -162,7 +162,10 @@ func (s *ProductService) Delete(_ context.Context, id int) error {
 // ============================================================
 
 func main() {
-	app := kruda.New()
+	// kruda.WithValidator(kruda.NewValidator()) activates the `validate`
+	// tags on Product (Name required, Price > 0) -- kruda.Resource
+	// validates create/update bodies against them automatically.
+	app := kruda.New(kruda.WithValidator(kruda.NewValidator()))
 
 	// Create the product service.
 	svc := NewProductService()
