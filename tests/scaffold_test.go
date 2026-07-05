@@ -215,11 +215,12 @@ func TestAdvancedContains8SubSections(t *testing.T) {
 }
 
 // Validates: Requirements 8.1
-func TestProductionContains3SubSections(t *testing.T) {
+func TestProductionContains4SubSections(t *testing.T) {
 	expected := []string{
 		"01-monitoring",
 		"02-docker-deploy",
 		"03-benchmark",
+		"04-observability",
 	}
 
 	prodDir := filepath.Join(repoRoot(t), "05-production")
@@ -235,8 +236,8 @@ func TestProductionContains3SubSections(t *testing.T) {
 		}
 	}
 
-	if len(dirs) != 3 {
-		t.Errorf("05-production/ contains %d sub-section directories, expected 3: %v", len(dirs), dirs)
+	if len(dirs) != 4 {
+		t.Errorf("05-production/ contains %d sub-section directories, expected 4: %v", len(dirs), dirs)
 	}
 
 	for _, name := range expected {
