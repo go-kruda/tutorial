@@ -13,6 +13,8 @@ In this section you will learn how to connect **PostgreSQL** to Kruda, manage **
 - Use Docker Compose to run PostgreSQL for development
 - Use `c.Context()` to pass request context to database queries
 - Handle errors with `kruda.NotFound()`, `kruda.InternalError()`, `kruda.BadRequest()`
+- Render errors as RFC 9457 `application/problem+json` with `kruda.WithProblemJSON()`
+- Enrich errors with the fluent `.WithType()`, `.WithDetail()`, `.WithInstance()`, `.With()` builders
 - Use `app.MapError()` for automatic error mapping
 
 ---
@@ -188,6 +190,64 @@ kruda.Get[GetUserInput, UserResponse](app, "/users/:id", func(c *kruda.C[GetUser
 })
 ```
 
+### RFC 9457 `problem+json` Errors
+
+Since kruda **v1.4.0**, you can opt into [RFC 9457](https://www.rfc-editor.org/rfc/rfc9457) `application/problem+json` error responses with one option:
+
+```go
+app := kruda.New(
+    kruda.WithValidator(kruda.NewValidator()),
+    kruda.WithProblemJSON(),
+)
+```
+
+> ⚠️ Fix: `CreateUserInput` already carries `validate:"required"` / `validate:"required,email"` tags (see Step 2's types), but until now no lesson in this tutorial ever called `kruda.WithValidator(...)` -- so those tags did nothing. `kruda.WithValidator(kruda.NewValidator())` turns them on for the first time.
+
+With `WithProblemJSON()` on, every `KrudaError` renders as a problem document instead of the plain `{code, message}` shape. Chain the fluent builders to add RFC 9457 fields:
+
+```go
+kruda.Get[GetUserInput, UserResponse](app, "/users/:id", func(c *kruda.C[GetUserInput]) (*UserResponse, error) {
+    var user UserResponse
+    err := db.QueryRowContext(c.Context(),
+        "SELECT id, name, email FROM users WHERE id = $1", c.In.ID,
+    ).Scan(&user.ID, &user.Name, &user.Email)
+
+    if err == sql.ErrNoRows {
+        return nil, kruda.NotFound(fmt.Sprintf("user with id %d not found", c.In.ID)).
+            WithType("https://errors.example.com/not-found").
+            With("userId", c.In.ID)
+    }
+    if err != nil {
+        return nil, kruda.InternalError(fmt.Sprintf("query user: %v", err))
+    }
+    return &user, nil
+})
+```
+
+`GET /users/999` now returns:
+
+```json
+{
+  "type": "https://errors.example.com/not-found",
+  "title": "Not Found",
+  "status": 404,
+  "detail": "user with id 999 not found",
+  "instance": "/users/999",
+  "userId": 999
+}
+```
+
+| Builder | Sets |
+|---|---|
+| `.WithType(uri)` | RFC 9457 `type` member (defaults to `"about:blank"`) |
+| `.WithDetail(text)` | `detail` member (defaults to the error's message) |
+| `.WithInstance(uri)` | `instance` member (defaults to the request path) |
+| `.With(key, value)` | An arbitrary extension member (reserved names `type`/`title`/`status`/`detail`/`instance`/`errors` are dropped) |
+
+`title` always mirrors the HTTP status text and is not settable. Validation failures (from `kruda.WithValidator`) short-circuit to their own shape -- `title: "Validation failed"`, `status: 422`, and an `errors` array of per-field problems -- shown in Step 7.
+
+> 💡 If you also call `kruda.WithErrorHandler(...)`, it takes precedence over `WithProblemJSON()` -- the two are mutually exclusive in effect, and this lesson doesn't use `WithErrorHandler`.
+
 ---
 
 ## 🔗 Step 6: Error Mapping (Optional)
@@ -232,8 +292,29 @@ curl http://localhost:3000/users/1
 # Delete a user
 curl -X DELETE http://localhost:3000/users/1
 
-# Test 404
+# Test 404 -- now a problem+json body with a "type" and "userId" extension
 curl http://localhost:3000/users/999
+
+# Test validation -- 422 problem+json with a field-level "errors" array
+curl -X POST http://localhost:3000/users \
+  -H "Content-Type: application/json" \
+  -d '{"name":"","email":"not-an-email"}'
+```
+
+The validation request returns:
+
+```json
+{
+  "type": "about:blank",
+  "title": "Validation failed",
+  "status": 422,
+  "detail": "validation failed: 2 errors",
+  "instance": "/users",
+  "errors": [
+    {"field": "name", "rule": "required", "param": "", "message": "name is required", "value": ""},
+    {"field": "email", "rule": "email", "param": "", "message": "email must be a valid email address", "value": "not-an-email"}
+  ]
+}
 ```
 
 ---
@@ -257,6 +338,9 @@ diff starter/main.go complete/main.go
 | `kruda.NotFound()` | Return 404 error |
 | `kruda.InternalError()` | Return 500 error |
 | `kruda.BadRequest()` | Return 400 error |
+| `kruda.WithProblemJSON()` | Render errors as RFC 9457 `application/problem+json` |
+| `.WithType()` / `.WithDetail()` / `.WithInstance()` / `.With()` | Fluent `*KrudaError` builders for problem+json fields and extensions |
+| `kruda.WithValidator(kruda.NewValidator())` | Activate struct `validate` tags -- required to get 422s |
 | `app.MapError()` | Automatically map Go error → HTTP status |
 | `kruda.MapErrorType[T]()` | Map error type → HTTP status |
 
