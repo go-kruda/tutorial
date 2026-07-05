@@ -2,7 +2,7 @@
 
 ⏱️ Estimated time: **30 minutes**
 
-Welcome to the final lesson of the Tutorial! In this lesson you will learn how to **benchmark** a Kruda application using Go's built-in benchmarking tool -- measuring handler throughput, JSON serialisation speed, and concurrent load performance to ensure your application is production-ready.
+Welcome to the Benchmark lesson! In this lesson you will learn how to **benchmark** a Kruda application using Go's built-in benchmarking tool -- measuring handler throughput, JSON serialisation speed, and concurrent load performance to ensure your application is production-ready.
 
 ---
 
@@ -341,18 +341,8 @@ diff starter/main.go complete/main.go
 
 ---
 
-## Congratulations! You have completed the Tutorial!
+## Next Lesson
 
-You have learned everything in the Kruda Tutorial from beginner to production!
+Great work! You now know how to benchmark a Kruda application and read the results. In the final lesson you'll wire up **Observability** -- turnkey tracing, metrics, and health probes with `contrib/observability`.
 
-What you learned across the tutorial:
-
-- **Beginner** -- REST API + Typed Handlers
-- **Auto CRUD** -- Generate CRUD endpoints automatically
-- **Intermediate** -- Database, Config, Error Handling
-- **Advanced** -- DI Container, Auth, OpenAPI, SSE, MCP, WebSocket, Testing, Architecture
-- **Production** -- Monitoring, Docker Deploy, Benchmark
-
-Happy building with Kruda!
-
---> [Back to main page](../../)
+--> [Section 05-04 -- Observability](../04-observability/)
