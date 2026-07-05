@@ -28,6 +28,7 @@ By the end of this lesson you will be able to:
 - Run a container with a non-root user for security
 - Pass configuration via environment variables (`-e PORT=8080`)
 - Map ports between host and container (`-p 8080:3000`)
+- Guard the Wing transport's accept path with `WithMaxConns`/`WithMaxConnsPerIP`/`WithMaxAcceptRate`/`WithHeaderLimit`
 
 ---
 
@@ -124,7 +125,15 @@ port := getEnv("PORT", "3000")
 ```go
 func main() {
     port := getEnv("PORT", "3000")
-    app := kruda.New()
+
+    // Wing accept-side DoS limits -- live only on Linux/Wing (this
+    // container's transport); silently ignored on fasthttp/net/http.
+    app := kruda.New(
+        kruda.WithMaxConns(1024),
+        kruda.WithMaxConnsPerIP(64),
+        kruda.WithMaxAcceptRate(100, 200),
+        kruda.WithHeaderLimit(16 * 1024),
+    )
 
     kruda.Get[struct{}, HealthResponse](app, "/health", func(c *kruda.C[struct{}]) (*HealthResponse, error) {
         return &HealthResponse{
@@ -145,6 +154,21 @@ func main() {
     log.Fatal(app.Listen(addr))
 }
 ```
+
+### Wing Accept-Side DoS Limits
+
+Since kruda **v1.4.0**/**v1.5.0**, four options guard the **Wing** transport's accept path against denial-of-service traffic:
+
+| Option | Guards against |
+|---|---|
+| `kruda.WithMaxConns(n)` | Total accepted connections exceeding `n` (0 disables; unset derives a default from the process's fd ulimit) |
+| `kruda.WithMaxConnsPerIP(n)` | One IP holding more than `n` concurrent connections |
+| `kruda.WithMaxAcceptRate(perSec, burst)` | A connection-rate flood (token bucket: `perSec` sustained, `burst` peak) |
+| `kruda.WithHeaderLimit(n)` | Oversized request headers (default 8 KB; returns HTTP 431 over the limit) |
+
+Over any of the first three limits, kruda closes the connection with a **TCP RST at accept time** -- never an HTTP 503 -- so the limits must be sized for real traffic, not treated as a soft throttle.
+
+> ⚠️ **These are Wing-only.** Wing is the default transport on **Linux** -- exactly what this Docker container runs. On your local macOS dev machine (fasthttp default) or Windows (net/http default), all four options are silently ignored. If you test locally and see no effect, that's expected: the limits only take hold once this image runs on a Linux host.
 
 ### Step 5: Write the Multi-Stage Dockerfile
 
@@ -258,6 +282,8 @@ diff starter/main.go complete/main.go
 | `HEALTHCHECK` | Define health check for container orchestration |
 | `USER appuser` | Run the process as non-root user for security |
 | Environment Variables | Pass configuration via `-e` flag following 12-factor app |
+| `kruda.WithMaxConns(n)` / `WithMaxConnsPerIP(n)` / `WithMaxAcceptRate(perSec, burst)` | Wing-only accept-side DoS limits -- RST, not 503, over the limit |
+| `kruda.WithHeaderLimit(n)` | Caps total request-header size (default 8 KB -> HTTP 431) |
 
 ---
 
@@ -271,6 +297,7 @@ diff starter/main.go complete/main.go
 - Use environment variables for configuration
 - Set resource limits (`--memory`, `--cpus`)
 - Use `.dockerignore` to exclude unnecessary files
+- Tune `kruda.WithMaxConns`/`WithMaxConnsPerIP`/`WithMaxAcceptRate` for your expected traffic (Wing/Linux only)
 
 ### Docker Compose Example
 
