@@ -2,7 +2,7 @@ module github.com/go-kruda/tutorial/02-auto-crud/complete
 
 go 1.25.11
 
-require github.com/go-kruda/kruda v1.6.0
+require github.com/go-kruda/kruda v1.7.0
 
 require (
 	github.com/andybalholm/brotli v1.2.0 // indirect
