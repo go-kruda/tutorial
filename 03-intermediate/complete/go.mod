@@ -3,7 +3,7 @@ module github.com/go-kruda/tutorial/03-intermediate/complete
 go 1.25.11
 
 require (
-	github.com/go-kruda/kruda v1.6.0
+	github.com/go-kruda/kruda v1.7.0
 	github.com/jackc/pgx/v5 v5.7.4
 )
 
