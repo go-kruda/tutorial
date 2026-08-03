@@ -96,12 +96,11 @@ func (s *ProductService) List(_ context.Context, page, limit int) ([]Product, in
 }
 
 // Create persists a new product. Field-shape validation (Name
-// required, Price > 0) is now handled declaratively by the
-// `validate` tags on Product plus kruda.WithValidator(...) below --
-// kruda.Resource validates the request body and returns a 422
-// before Create is even called, so this method only needs to
-// handle persistence. Put cross-field or business-rule checks that
-// can't be expressed as tags here instead.
+// required, Price > 0) is handled declaratively by the `validate`
+// tags on Product -- kruda.Resource validates the request body and
+// returns a 422 before Create is even called, so this method only
+// needs to handle persistence. Put cross-field or business-rule
+// checks that can't be expressed as tags here instead.
 func (s *ProductService) Create(_ context.Context, item Product) (Product, error) {
 	s.mu.Lock()
 	defer s.mu.Unlock()
@@ -162,10 +161,10 @@ func (s *ProductService) Delete(_ context.Context, id int) error {
 // ============================================================
 
 func main() {
-	// kruda.WithValidator(kruda.NewValidator()) activates the `validate`
-	// tags on Product (Name required, Price > 0) -- kruda.Resource
-	// validates create/update bodies against them automatically.
-	app := kruda.New(kruda.WithValidator(kruda.NewValidator()))
+	// The `validate` tags on Product (Name required, Price > 0) need no
+	// setup -- kruda.Resource validates create/update bodies against them
+	// automatically.
+	app := kruda.New()
 
 	// Create the product service.
 	svc := NewProductService()

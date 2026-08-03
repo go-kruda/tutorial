@@ -63,7 +63,6 @@ func main() {
 	//       kruda.WithOpenAPIInfo("title", "1.0.0", "description"),
 	//       kruda.WithOpenAPITag("Products", "Product operations"),
 	//       kruda.WithOpenAPITag("Orders", "Order operations"),
-	//       kruda.WithValidator(kruda.NewValidator()),   // activates the validate tags above
 	//       kruda.WithOpenAPIBearerAuth("bearerAuth"),   // registers a security scheme
 	//   )
 	app := kruda.New()

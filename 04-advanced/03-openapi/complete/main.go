@@ -83,10 +83,9 @@ func main() {
 		),
 		kruda.WithOpenAPITag("Products", "Product management operations"),
 		kruda.WithOpenAPITag("Orders", "Order management operations"),
-		// WithValidator activates the `validate` tags already present on
-		// CreateProductInput/CreateOrderInput -- without it, those tags do
-		// nothing and no 422 response is ever generated.
-		kruda.WithValidator(kruda.NewValidator()),
+		// The `validate` tags on CreateProductInput/CreateOrderInput are
+		// enforced with no configuration, which is why the generated spec
+		// carries a 422 response for those routes.
 		// WithOpenAPIBearerAuth registers a "bearerAuth" security scheme
 		// in the spec's components.securitySchemes.
 		kruda.WithOpenAPIBearerAuth("bearerAuth"),

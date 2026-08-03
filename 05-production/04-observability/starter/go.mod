@@ -3,7 +3,7 @@ module github.com/go-kruda/tutorial/05-production/04-observability/starter
 go 1.25.11
 
 require (
-	github.com/go-kruda/kruda v1.7.0
+	github.com/go-kruda/kruda v1.7.1
 	github.com/go-kruda/kruda/contrib/observability v1.0.0
 )
 

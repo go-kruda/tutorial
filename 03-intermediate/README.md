@@ -196,12 +196,11 @@ Since kruda **v1.4.0**, you can opt into [RFC 9457](https://www.rfc-editor.org/r
 
 ```go
 app := kruda.New(
-    kruda.WithValidator(kruda.NewValidator()),
     kruda.WithProblemJSON(),
 )
 ```
 
-> ⚠️ Fix: `CreateUserInput` already carries `validate:"required"` / `validate:"required,email"` tags (see Step 2's types), but until now no lesson in this tutorial ever called `kruda.WithValidator(...)` -- so those tags did nothing. `kruda.WithValidator(kruda.NewValidator())` turns them on for the first time.
+> 💡 The `validate:"required"` / `validate:"required,email"` tags on `CreateUserInput` (Step 2) are already being enforced -- validation needs no option to switch on. A request that violates one gets a `422` before your handler runs, and with `WithProblemJSON()` that `422` arrives as a problem document too. `kruda.WithValidator(...)` exists for *custom* rules and messages, not for turning validation on.
 
 With `WithProblemJSON()` on, every `KrudaError` renders as a problem document instead of the plain `{code, message}` shape. Chain the fluent builders to add RFC 9457 fields:
 
@@ -244,7 +243,7 @@ kruda.Get[GetUserInput, UserResponse](app, "/users/:id", func(c *kruda.C[GetUser
 | `.WithInstance(uri)` | `instance` member (defaults to the request path) |
 | `.With(key, value)` | An arbitrary extension member (reserved names `type`/`title`/`status`/`detail`/`instance`/`errors` are dropped) |
 
-`title` always mirrors the HTTP status text and is not settable. Validation failures (from `kruda.WithValidator`) short-circuit to their own shape -- `title: "Validation failed"`, `status: 422`, and an `errors` array of per-field problems -- shown in Step 7.
+`title` always mirrors the HTTP status text and is not settable. Validation failures short-circuit to their own shape -- `title: "Validation failed"`, `status: 422`, and an `errors` array of per-field problems -- shown in Step 7.
 
 > 💡 If you also call `kruda.WithErrorHandler(...)`, it takes precedence over `WithProblemJSON()` -- the two are mutually exclusive in effect, and this lesson doesn't use `WithErrorHandler`.
 
@@ -340,7 +339,7 @@ diff starter/main.go complete/main.go
 | `kruda.BadRequest()` | Return 400 error |
 | `kruda.WithProblemJSON()` | Render errors as RFC 9457 `application/problem+json` |
 | `.WithType()` / `.WithDetail()` / `.WithInstance()` / `.With()` | Fluent `*KrudaError` builders for problem+json fields and extensions |
-| `kruda.WithValidator(kruda.NewValidator())` | Activate struct `validate` tags -- required to get 422s |
+| `kruda.WithValidator(...)` | Register *custom* validation rules or messages; struct `validate` tags are enforced without it |
 | `app.MapError()` | Automatically map Go error → HTTP status |
 | `kruda.MapErrorType[T]()` | Map error type → HTTP status |
 

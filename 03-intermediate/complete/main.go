@@ -118,14 +118,12 @@ func main() {
 
 	// ── 3. Create the Kruda Application ───────────────────────
 	//
-	// kruda.WithValidator(kruda.NewValidator()) activates the `validate`
-	// tags on CreateUserInput (Step 2's types) -- until this option is
-	// set, those tags do nothing and POST /users never validates input.
-	// kruda.WithProblemJSON() renders every KrudaError as an RFC 9457
+	// The `validate` tags on CreateUserInput (Step 2's types) are enforced
+	// without any option, so POST /users returns a 422 before the handler
+	// runs. kruda.WithProblemJSON() renders every KrudaError as an RFC 9457
 	// application/problem+json document instead of the plain {code,
 	// message} shape.
 	app := kruda.New(
-		kruda.WithValidator(kruda.NewValidator()),
 		kruda.WithProblemJSON(),
 	)
 
