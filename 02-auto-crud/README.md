@@ -23,7 +23,7 @@ By the end of this lesson you will be able to:
 - ✅ Explain how Auto CRUD works and how it differs from writing handlers manually
 - ✅ Define a model struct for Auto CRUD
 - ✅ Implement the `ResourceService[T, ID]` interface with 5 methods: `List`, `Create`, `Get`, `Update`, `Delete`
-- ✅ Add automatic validation with `validate` tags + `kruda.WithValidator(...)`, and business logic in service methods
+- ✅ Add automatic validation with `validate` tags, and business logic in service methods
 - ✅ Return `kruda.NotFound()` from a service method to get a real 404
 - ✅ Register a model with `kruda.Resource[T, ID]()` to automatically generate 5 endpoints
 
@@ -168,7 +168,7 @@ func (s *ProductService) List(_ context.Context, page, limit int) ([]Product, in
 
 ### Step 6: Implement the Create Method
 
-Since kruda **v1.4.0**, `kruda.Resource` validates create/update request bodies automatically -- using the `validate` tags on your model (Step 2) plus `kruda.WithValidator(...)` (Step 8) -- and returns a `422` *before* your service method is even called. `Create` only needs to persist the item:
+`kruda.Resource` validates create/update request bodies automatically, using the `validate` tags you put on the model in Step 2, and returns a `422` *before* your service method is even called. `Create` only needs to persist the item:
 
 ```go
 func (s *ProductService) Create(_ context.Context, item Product) (Product, error) {
@@ -182,7 +182,7 @@ func (s *ProductService) Create(_ context.Context, item Product) (Product, error
 }
 ```
 
-> 🔧 Field-shape checks (required, format, ranges) belong on the model as `validate` tags -- the framework enforces them for you. Keep manual checks in the service only for cross-field or business rules that can't be expressed as a tag (there aren't any in this example). Without `kruda.WithValidator(...)` set on the app, `validate` tags do nothing -- Step 8 wires it up.
+> 🔧 Field-shape checks (required, format, ranges) belong on the model as `validate` tags -- the framework enforces them for you, with no setup. Keep manual checks in the service only for cross-field or business rules that can't be expressed as a tag (there aren't any in this example).
 
 ### Step 7: Implement Get, Update, Delete Methods
 
@@ -235,9 +235,8 @@ This is the heart of the lesson! Replace the `// TODO:` in `main()`:
 
 ```go
 func main() {
-    // kruda.WithValidator(kruda.NewValidator()) activates the `validate`
-    // tags on Product -- without it, the tags do nothing.
-    app := kruda.New(kruda.WithValidator(kruda.NewValidator()))
+    // The `validate` tags on Product are enforced with no configuration.
+    app := kruda.New()
 
     svc := NewProductService()
 
@@ -324,8 +323,8 @@ diff starter/main.go complete/main.go
 | Auto CRUD | A feature that automatically generates CRUD endpoints from a `ResourceService` interface |
 | `ResourceService[T, ID]` | An interface requiring 5 methods: `List`, `Create`, `Get`, `Update`, `Delete` |
 | `kruda.Resource[T, ID]()` | Registers a service to generate 5 CRUD endpoints in a single line |
-| `kruda.WithValidator(kruda.NewValidator())` | Activates `validate` struct tags -- required for Resource's auto-validation |
-| `validate` struct tags | Declarative field-shape validation on your model (e.g. `required`, `gt=0`) -- Resource enforces them before your service runs |
+| `validate` struct tags | Declarative field-shape validation on your model (e.g. `required`, `gt=0`) -- enforced by default, before your service runs |
+| `kruda.WithValidator(...)` | Only needed to register *custom* rules or messages; validation itself is already on |
 | `WithResourceMiddleware` | Adds middleware for a resource |
 | `WithResourceOnly` / `WithResourceExcept` | Include/exclude HTTP methods to generate |
 | `kruda.NotFound()` in a service method | Returns a real 404 from `Get`/`Update`/`Delete` -- a plain error resolves to 500 |

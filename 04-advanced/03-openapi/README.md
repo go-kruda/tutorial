@@ -25,7 +25,7 @@ By the end of this lesson you'll be able to:
 - ✅ Use `kruda.WithOpenAPITag()` to define tag group descriptions
 - ✅ Use `kruda.WithTags()` to group endpoints in the spec
 - ✅ Use `kruda.WithDescription()` to describe each operation
-- ✅ Activate automatic `422` validation with `kruda.WithValidator(kruda.NewValidator())`
+- ✅ See the automatic `422` validation response documented in the generated spec
 - ✅ Register a security scheme with `kruda.WithOpenAPIBearerAuth()` and require it per-route with `kruda.WithOpenAPISecurity()`
 - ✅ Add request/response examples with `kruda.WithRequestExample()` / `kruda.WithResponseExample()`
 - ✅ Access the OpenAPI spec at `/openapi.json`
@@ -122,14 +122,13 @@ app := kruda.New(
     ),
     kruda.WithOpenAPITag("Products", "Product management operations"),
     kruda.WithOpenAPITag("Orders", "Order management operations"),
-    kruda.WithValidator(kruda.NewValidator()),
     kruda.WithOpenAPIBearerAuth("bearerAuth"),
 )
 ```
 
 > 📄 `WithOpenAPIInfo()` sets the metadata (title, version, description) that appears at the top of the OpenAPI 3.0 spec — while `WithOpenAPITag()` defines the description for each tag group in the spec
 
-> ✅ `kruda.WithValidator(kruda.NewValidator())` activates the `validate` tags already on `CreateProductInput`/`CreateOrderInput` (Step 2's types) -- without it, those tags are silently ignored and no `422` response is ever generated or documented in the spec.
+> ✅ The `validate` tags on `CreateProductInput`/`CreateOrderInput` (Step 2's types) are enforced with no configuration, which is why a `422` response appears in the generated spec for those routes -- the generator documents the responses the route can actually produce.
 
 > 🔐 `kruda.WithOpenAPIBearerAuth("bearerAuth")` registers an HTTP bearer security scheme under the spec's `components.securitySchemes` -- Step 4 requires it on specific routes.
 
@@ -338,7 +337,7 @@ diff starter/main.go complete/main.go
 |---|---|
 | `kruda.WithOpenAPIInfo()` | Option in `kruda.New()` for setting title, version, description |
 | `kruda.WithOpenAPITag()` | Option in `kruda.New()` for defining tag group descriptions |
-| `kruda.WithValidator(kruda.NewValidator())` | Activates `validate` struct tags -- required for `422` responses to appear |
+| `validate` struct tags | Enforced with no configuration -- this is why a `422` response appears in the spec |
 | `kruda.WithOpenAPIBearerAuth(name)` | Registers an HTTP bearer security scheme in the spec |
 | `kruda.WithOpenAPISecurity(name, scopes...)` | Marks a route as requiring a security scheme (spec metadata only) |
 | `kruda.WithRequestExample(v)` / `kruda.WithResponseExample(v)` | Adds an example payload to a route's request/response schema |

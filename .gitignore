@@ -7,6 +7,12 @@
 *.test
 *.out
 
+# Compiled tutorial binaries. Every module builds one named after its own
+# directory (01-beginner/complete/complete), so match by path — a bare
+# `complete` would also ignore the source directories of the same name.
+**/complete/complete
+**/starter/starter
+
 # Go workspace
 vendor/
 

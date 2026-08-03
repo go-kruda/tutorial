@@ -56,9 +56,8 @@ func (s *ProductService) List(_ context.Context, page, limit int) ([]Product, in
 // TODO: implement Create -- persist a new product
 //
 // Hint: Field-shape validation (Name required, Price > 0) is handled
-//   automatically by the `validate` tags on Product once
-//   kruda.WithValidator(...) is set below -- this method only needs
-//   to assign an ID and persist the item.
+//   automatically by the `validate` tags on Product -- this method
+//   only needs to assign an ID and persist the item.
 func (s *ProductService) Create(_ context.Context, item Product) (Product, error) {
 	// TODO: persist
 	return Product{}, nil
@@ -98,9 +97,9 @@ func (s *ProductService) Delete(_ context.Context, id int) error {
 // ============================================================
 
 func main() {
-	// kruda.WithValidator(kruda.NewValidator()) activates the `validate`
-	// tags on Product (Name required, Price > 0).
-	app := kruda.New(kruda.WithValidator(kruda.NewValidator()))
+	// The `validate` tags on Product (Name required, Price > 0) are
+	// enforced with no configuration.
+	app := kruda.New()
 	svc := NewProductService()
 
 	// TODO: Register Auto CRUD for Product
